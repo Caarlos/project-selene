@@ -1,0 +1,299 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "SELENE cells_<grid>.json (PLAN.md section 6), schema version 1",
+  "description": "Columnar: one array per field, all of length n_cells, same row order. null where a value is unavailable.",
+  "type": "object",
+  "required": [
+    "h3",
+    "lat",
+    "lon",
+    "elev_m",
+    "best_lat",
+    "best_lon",
+    "sun_best_pct",
+    "sun_mean_pct",
+    "dark_max_h_best",
+    "dark_max_h_mean",
+    "earth_best_pct",
+    "earth_mean_pct",
+    "earth_outage_max_h_best",
+    "svf",
+    "slope_mean_deg",
+    "slope_p95_deg",
+    "safe_frac",
+    "tri_m",
+    "tmax_k",
+    "tavg_k",
+    "thermal_amp_k",
+    "psr_frac",
+    "ice_index",
+    "horizon_truncated"
+  ],
+  "properties": {
+    "h3": {
+      "description": "[string] H3 index",
+      "type": "array",
+      "items": {
+        "type": "string",
+        "pattern": "^[0-9a-f]{15}$"
+      }
+    },
+    "lat": {
+      "description": "[deg] cell centre latitude",
+      "type": "array",
+      "items": {
+        "type": "number",
+        "minimum": -90,
+        "maximum": 90
+      }
+    },
+    "lon": {
+      "description": "[deg] cell centre longitude, east-positive, (-180, 180]",
+      "type": "array",
+      "items": {
+        "type": "number",
+        "exclusiveMinimum": -180,
+        "maximum": 180
+      }
+    },
+    "elev_m": {
+      "description": "[m] mean elevation above the 1737.4 km sphere",
+      "type": "array",
+      "items": {
+        "type": [
+          "number",
+          "null"
+        ]
+      }
+    },
+    "best_lat": {
+      "description": "[deg] best-point latitude (highest sun_pct)",
+      "type": "array",
+      "items": {
+        "type": [
+          "number",
+          "null"
+        ],
+        "minimum": -90,
+        "maximum": 90
+      }
+    },
+    "best_lon": {
+      "description": "[deg] best-point longitude, east-positive, (-180, 180]",
+      "type": "array",
+      "items": {
+        "type": [
+          "number",
+          "null"
+        ],
+        "exclusiveMinimum": -180,
+        "maximum": 180
+      }
+    },
+    "sun_best_pct": {
+      "description": "[%] EOS sunlight, best point",
+      "type": "array",
+      "items": {
+        "type": [
+          "number",
+          "null"
+        ],
+        "minimum": 0,
+        "maximum": 100
+      }
+    },
+    "sun_mean_pct": {
+      "description": "[%] EOS sunlight, lattice mean",
+      "type": "array",
+      "items": {
+        "type": [
+          "number",
+          "null"
+        ],
+        "minimum": 0,
+        "maximum": 100
+      }
+    },
+    "dark_max_h_best": {
+      "description": "[h] EOS longest continuous darkness, best point",
+      "type": "array",
+      "items": {
+        "type": [
+          "number",
+          "null"
+        ],
+        "minimum": 0
+      }
+    },
+    "dark_max_h_mean": {
+      "description": "[h] EOS longest continuous darkness, lattice mean",
+      "type": "array",
+      "items": {
+        "type": [
+          "number",
+          "null"
+        ],
+        "minimum": 0
+      }
+    },
+    "earth_best_pct": {
+      "description": "[%] HERMES Earth visibility, best point",
+      "type": "array",
+      "items": {
+        "type": [
+          "number",
+          "null"
+        ],
+        "minimum": 0,
+        "maximum": 100
+      }
+    },
+    "earth_mean_pct": {
+      "description": "[%] HERMES Earth visibility, lattice mean",
+      "type": "array",
+      "items": {
+        "type": [
+          "number",
+          "null"
+        ],
+        "minimum": 0,
+        "maximum": 100
+      }
+    },
+    "earth_outage_max_h_best": {
+      "description": "[h] HERMES longest Earth outage, best point",
+      "type": "array",
+      "items": {
+        "type": [
+          "number",
+          "null"
+        ],
+        "minimum": 0
+      }
+    },
+    "svf": {
+      "description": "[0-1] sky view factor, lattice mean",
+      "type": "array",
+      "items": {
+        "type": [
+          "number",
+          "null"
+        ],
+        "minimum": 0,
+        "maximum": 1
+      }
+    },
+    "slope_mean_deg": {
+      "description": "[deg] ARGUS mean slope",
+      "type": "array",
+      "items": {
+        "type": [
+          "number",
+          "null"
+        ],
+        "minimum": 0,
+        "maximum": 90
+      }
+    },
+    "slope_p95_deg": {
+      "description": "[deg] ARGUS 95th percentile slope",
+      "type": "array",
+      "items": {
+        "type": [
+          "number",
+          "null"
+        ],
+        "minimum": 0,
+        "maximum": 90
+      }
+    },
+    "safe_frac": {
+      "description": "[0-1] ARGUS fraction of pixels below the safe slope",
+      "type": "array",
+      "items": {
+        "type": [
+          "number",
+          "null"
+        ],
+        "minimum": 0,
+        "maximum": 1
+      }
+    },
+    "tri_m": {
+      "description": "[m] ARGUS terrain ruggedness index",
+      "type": "array",
+      "items": {
+        "type": [
+          "number",
+          "null"
+        ],
+        "minimum": 0
+      }
+    },
+    "tmax_k": {
+      "description": "[K] HESTIA annual maximum temperature, cell mean",
+      "type": "array",
+      "items": {
+        "type": [
+          "number",
+          "null"
+        ],
+        "minimum": 0
+      }
+    },
+    "tavg_k": {
+      "description": "[K] HESTIA annual average temperature, cell mean",
+      "type": "array",
+      "items": {
+        "type": [
+          "number",
+          "null"
+        ],
+        "minimum": 0
+      }
+    },
+    "thermal_amp_k": {
+      "description": "[K] HESTIA tmax_k - tavg_k",
+      "type": "array",
+      "items": {
+        "type": [
+          "number",
+          "null"
+        ],
+        "minimum": 0
+      }
+    },
+    "psr_frac": {
+      "description": "[0-1] HESTIA fraction of the cell in permanent shadow",
+      "type": "array",
+      "items": {
+        "type": [
+          "number",
+          "null"
+        ],
+        "minimum": 0,
+        "maximum": 1
+      }
+    },
+    "ice_index": {
+      "description": "[0-1] HESTIA fraction of pixels with Tmax < 110 K (stability index, not a probability)",
+      "type": "array",
+      "items": {
+        "type": [
+          "number",
+          "null"
+        ],
+        "minimum": 0,
+        "maximum": 1
+      }
+    },
+    "horizon_truncated": {
+      "description": "[bool] a ray left the DEM before the full range",
+      "type": "array",
+      "items": {
+        "type": "boolean"
+      }
+    }
+  },
+  "additionalProperties": false
+}

@@ -1,0 +1,59 @@
+{
+  "schema_version": 1,
+  "scenario_id": "fixture",
+  "synthetic": true,
+  "generated_at": "2026-11-14T00:00:00Z",
+  "region": {
+    "name": "south_pole",
+    "lat_max": -80.0
+  },
+  "time": {
+    "start": "2027-01-01T00:00:00Z",
+    "end": "2028-01-01T00:00:00Z",
+    "step_s": 3600
+  },
+  "params": {
+    "az_step_deg": 1,
+    "range_km": 150,
+    "observer_height_m": 2,
+    "safe_slope_deg": 10,
+    "samples_per_cell": 8,
+    "slope_baseline_m": 20,
+    "ice_source": "synthetic"
+  },
+  "sources": [],
+  "projection": {
+    "type": "south_polar_stereographic",
+    "radius_m": 1737400.0
+  },
+  "hillshade": {
+    "file": "hillshade.webp",
+    "bounds_m": [
+      -304000.0,
+      -304000.0,
+      304000.0,
+      304000.0
+    ]
+  },
+  "ephemeris": {
+    "file": "ephemeris_fixture.bin",
+    "t0": "2027-01-01T00:00:00Z",
+    "step_s": 3600,
+    "n": 8760
+  },
+  "grids": [
+    {
+      "id": "cap_r5",
+      "res": 5,
+      "n_cells": 14444,
+      "cells": "cells_cap_r5.json",
+      "horizons": "horizons_cap_r5.bin",
+      "horizons_n_cells": 3000
+    }
+  ],
+  "notes": [
+    "Placeholder written by pipeline/fixture.py: every metric, horizon, ephemeris row and the hillshade are fake. Only the H3 cell set is real.",
+    "Horizons are stored for the first 3000 cells only (horizons_n_cells) to keep the fixture small; real scenarios store all cells.",
+    "The ephemeris placeholder covers 2027 only; the real table covers 2026-01-01 to 2036-01-01."
+  ]
+}

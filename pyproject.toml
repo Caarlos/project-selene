@@ -1,0 +1,38 @@
+[build-system]
+requires = ["setuptools>=77"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "selene-pipeline"
+version = "0.1.0"
+description = "SELENE offline pipeline (lunar south pole site metrics)"
+requires-python = ">=3.12"
+dependencies = [
+    "numpy==2.5.4",
+    "numba==0.68.1",
+    "rasterio==1.5.2",
+    "h3==4.5.0",
+    "pillow==13.0.0",
+    "jsonschema==4.26.0",
+]
+
+[project.optional-dependencies]
+dev = ["pytest==9.2.0", "ruff==0.17.5"]
+
+[tool.setuptools.packages.find]
+include = ["pipeline*"]
+
+[tool.setuptools.package-data]
+pipeline = ["schema/*.json"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q"
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+extend-exclude = ["spikes", "web"]
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "B", "UP", "NPY"]
