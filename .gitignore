@@ -18,3 +18,5 @@ web/playwright-report/
 web/blob-report/
 web/playwright/.cache/
 *.tsbuildinfo
+
+.claude/worktrees/
