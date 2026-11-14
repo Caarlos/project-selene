@@ -360,7 +360,7 @@ Priorities: **P0** must be done for the demonstrator; **P1** should; **P2** coul
 
 | ID | Pri | Task | Depends on | Owns |
 |---|---|---|---|---|
-| T0 ★ | P0 | Bootstrap: git, `pyproject.toml`, venv, web scaffold, lint/test commands, JSON Schemas of §6, `.gitignore` (`data/raw/`, `spikes/`, virtualenvs, `node_modules`), and `pipeline/fixture.py` that writes a small schema-valid placeholder scenario (`synthetic: true`) so the web track can start | none | repo root, `pipeline/schema/`, `pipeline/fixture.py`, `web/` scaffold |
+| T0 ★ | P0 | Bootstrap: git, `pyproject.toml`, venv, web scaffold, lint/test commands, JSON Schemas of §6, `.gitignore` (`data/raw/`, `spikes/`, virtualenvs, `node_modules`), and `pipeline/fixture.py` that writes a small schema-valid placeholder scenario (`synthetic: true`) so the web track can start. Apply the `WARNING.md` actions: pnpm overrides `image-size >=2.0.3` and `fflate >=0.7.5`, upgrade `pip` in the venv before installing, exact versions pinned | none | repo root, `pipeline/schema/`, `pipeline/fixture.py`, `web/` scaffold |
 | P1 ★ | P0 | Grid, projection, DEM io, label raster, sample points, synthetic DEM | T0 | `pipeline/hyperion/` (grid, io) |
 | P2 ★ | P0 | Horizon ray tracer (Numba), SVF, hillshade, known-answer tests | P1 | `pipeline/hyperion/` (horizon) |
 | P3 ★ | P0 | Ephemeris table fetch + cache, direction geometry, EOS and HERMES metrics, parity vectors | T0 | `pipeline/hermes/`, `pipeline/eos/` |
@@ -418,6 +418,7 @@ Suggested order with two workers: T0 → (P1 ∥ W1) → (P2 ∥ W2) → (P3 ∥
 * **Tests** come with the code. Run `ruff check`, `pytest`, `pnpm --dir web typecheck`, `lint` and `test` as relevant before handing off.
 * **Never fake** an external input silently. Missing data, credentials or tools are reported as blocked and added to `HUMAN_ACTION.md` by the orchestrator.
 * **Decisions:** any choice not settled here that affects results, scope or the user's experience is appended to `HUMAN_ACTION.md` (decision log) by the orchestrator.
+* **Security:** `WARNING.md` holds the latest vulnerability scan of the toolchain and dependencies (agent `security-auditor`). It is refreshed at the start of a session, after any dependency change and before every push. Do not add or upgrade a dependency that WARNING.md flags; pin exact versions in lockfiles.
 * **Hand-off format** (final message of every worker):
 
   ```text
