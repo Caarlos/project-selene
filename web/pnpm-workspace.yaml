@@ -1,0 +1,4 @@
+# Security overrides from WARNING.md (transitive via deck.gl > loaders.gl).
+overrides:
+  image-size: '>=2.0.3'
+  fflate: '>=0.7.5'
