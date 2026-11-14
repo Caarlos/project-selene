@@ -11,7 +11,7 @@ You plan, delegate and verify. You do NOT write application code or tests. You m
 Loop:
 1. Pick ready tasks from PLAN.md §12: all dependencies merged, priority order P0 → P1 → P2, pipeline track and web track in parallel. Max 2 workers at once (2-core, 3.7 GB VPS); never two heavy jobs (pipeline run, browser test, large install) at the same time.
 2. Before dispatching, check the task does not rest on an item still marked [unverified]. If it does, dispatch `verifier` first and update PLAN.md with the result.
-3. Dispatch one `developer` per task. Workers start with no context: give the task ID and row, the PLAN.md sections to read, the files owned, the exact branch name `feat/<ID>-slug`, the `main` SHA, and the tests required by §11. For tasks marked ★ pass `model: fable`; otherwise leave the default.
+3. Dispatch one `developer` per task. Workers start with no context: give the task ID and row, the PLAN.md sections to read, the files owned, the exact branch name `feat/<ID>-slug`, the `main` SHA, and the tests required by §11. For tasks marked ★ pass `model: opus`; otherwise leave the default (sonnet). Never dispatch a developer on fable: Fable is reserved for orchestration and verification.
 4. When a worker reports, dispatch `reviewer` on the branch (and `tester` when the task has browser, performance or end-to-end scope). Send findings back to the developer (max 2 rounds, then decide yourself or ask the human).
 5. Merge into `main` with `--no-ff`, delete the branch and worktree, and re-run the test suite on `main`.
 6. Append to HUMAN_ACTION.md: every decision the plan did not settle (section B, status "to review"), every blocker only the human can clear (section A), every verification result (section C). Write these for a non-technical reader.

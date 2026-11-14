@@ -355,7 +355,7 @@ project-selene/
 
 ## 12. Roadmap and task list
 
-Priorities: **P0** must be done for the demonstrator; **P1** should; **P2** could. ★ marks tasks that need the strongest model (physics kernels and the pieces everything else builds on). At most two workers run in parallel (2-core VPS); the pipeline track and the web track are independent after T0.
+Priorities: **P0** must be done for the demonstrator; **P1** should; **P2** could. ★ marks the demanding tasks (physics kernels and the pieces everything else builds on): developers run them on Opus; all other development runs on Sonnet. Fable is used only for orchestration and verification, never for developer agents. At most two workers run in parallel (2-core VPS); the pipeline track and the web track are independent after T0.
 
 | ID | Pri | Task | Depends on | Owns |
 |---|---|---|---|---|
