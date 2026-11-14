@@ -88,7 +88,6 @@ Raw inputs are downloaded by `pipeline/fetch_data.py` into `data/raw/` (git-igno
 | JPL Horizons sub-solar and sub-Earth points, Earth–Moon range | EOS, HERMES | One plain HTTP GET per calendar year to `https://ssd.jpl.nasa.gov/api/horizons.api`: `COMMAND='301'`, `CENTER='500@399'`, `EPHEM_TYPE='OBSERVER'`, `QUANTITIES='14,15,20'`, `STEP_SIZE='1 h'`, `ANG_FORMAT='DEG'`, `RANGE_UNITS='KM'`, `CSV_FORMAT='YES'`. Limit 90,000 rows per request. Working script: `spikes/V1-data-ephemeris/fetch_ephemeris.py` (standard library only) | verified |
 
 Higher-fidelity alternatives for the workstation (not downloaded): `LDEM_80S_20MPP_ADJ.TIF` (2.7 GB, metres, Barker et al. 2023) and `LPSR_80S_20MPP_ADJ.TIF` (154 MB) from `https://pgda.gsfc.nasa.gov/data/LOLA_20mpp/`; `ldem_60s_240m.img` (120 MB) if terrain beyond 75°S is ever needed.
-| LROC Lunar Pits catalogue | deferred global mode | CSV | deferred |
 
 All NASA data are public domain; credit the instrument teams in `README.md` and in the APOLLO page.
 
@@ -336,7 +335,7 @@ project-selene/
 * Smooth sphere, observer at 2 m: horizon = −0.087° at every azimuth (dip = `acos(R/(R+h))`).
 * Observer at the centre of an analytic crater of rim height `Hr` at distance `Dr`: horizon matches the closed-form value from the formula in §5.1 within 0.02°.
 * At a point 1 km from the pole on a smooth sphere, Sun elevation ≈ −(sub-solar latitude) within 0.05°; azimuth advances with sub-solar longitude.
-* H3 scaling: resolution-5 cell area ≈ 18.8 km² (±15%, cells vary); cap cell count exactly 14,444.
+* H3 scaling: resolution-5 polar cell area between 16.9 and 22.4 km², mean ≈ 19.95 km²; cap cell count exactly 14,444.
 * Longest-run and lit-fraction functions on hand-made series.
 * Slope of an analytic inclined plane.
 
@@ -414,7 +413,7 @@ Suggested order with two workers: T0 → (P1 ∥ W1) → (P2 ∥ W2) → (P3 ∥
 
 * **Source of truth:** this file. If a task seems to require contradicting it, stop and report; do not improvise physics.
 * **One task = one row of §12.** Touch only what the row owns. Shared surfaces (the data contract, `kpiConfig.ts`, direction geometry) change only through their owning task or with the orchestrator's explicit approval.
-* **Git:** trunk is `main`; work on `feat/<TASK-ID>-slug` in a worktree; Conventional Commits with an `Agent: <model-id>` trailer; the orchestrator merges with `--no-ff` after review. Nobody pushes to a remote without human approval.
+* **Git:** trunk is `main`; work on `feat/<TASK-ID>-slug` in a worktree; Conventional Commits with an `Agent: <model-id>` trailer; the orchestrator merges with `--no-ff` after review. Local commits only: nobody pushes to a remote until the human says so.
 * **Tests** come with the code. Run `ruff check`, `pytest`, `pnpm --dir web typecheck`, `lint` and `test` as relevant before handing off.
 * **Never fake** an external input silently. Missing data, credentials or tools are reported as blocked and added to `HUMAN_ACTION.md` by the orchestrator.
 * **Decisions:** any choice not settled here that affects results, scope or the user's experience is appended to `HUMAN_ACTION.md` (decision log) by the orchestrator.
