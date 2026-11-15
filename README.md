@@ -152,6 +152,7 @@ python3 -m venv .venv
 corepack pnpm --dir web typecheck
 corepack pnpm --dir web lint
 corepack pnpm --dir web test
+corepack pnpm --dir web smoke   # browser smoke test: builds, drives headless Chromium over both scenarios (a few minutes, run it alone); screenshots go to web/test-results/
 ```
 
 ### Rebuilding the data (optional, slow)
