@@ -19,6 +19,10 @@ export interface GridInfo {
   horizons: string;
   /** Placeholder fixtures only: the horizons file covers the first rows only. Absent = n_cells. */
   horizons_n_cells?: number;
+  /** Detail patches only: region key of pipeline/regions.json */
+  name?: string;
+  /** Detail patches only: [x_min, y_min, x_max, y_max] of the patch square, projection metres. Absent = overview grid. */
+  bounds_m?: [number, number, number, number];
 }
 
 export interface Manifest {
@@ -130,7 +134,9 @@ export function parseManifest(doc: unknown): Manifest {
     expect(
       `grids[${i}]`,
       isObject(g) && str(g.id) && num(g.res) && num(g.n_cells) && str(g.cells) && str(g.horizons) &&
-        (g.horizons_n_cells === undefined || num(g.horizons_n_cells)),
+        (g.horizons_n_cells === undefined || num(g.horizons_n_cells)) &&
+        (g.name === undefined || str(g.name)) &&
+        (g.bounds_m === undefined || (Array.isArray(g.bounds_m) && g.bounds_m.length === 4 && g.bounds_m.every(num))),
     ),
   );
   if (bad.length) throw new Error(`manifest.json: missing or invalid field(s): ${bad.join(', ')}`);

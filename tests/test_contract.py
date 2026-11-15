@@ -54,8 +54,9 @@ def test_committed_fixture_is_valid_reproducible_and_small(generated):
         )
     total = sum(f.stat().st_size for f in COMMITTED.rglob("*") if f.is_file())
     # fixture (4.7 MB) + shared 10-year ephemeris (1.75 MB) + the real south-pole-2027 scenario
-    # (10.4 MB horizons, a few MB cells, hillshade): keep the repository's web data small
-    assert total < 25_000_000
+    # (10.4 MB horizons, a few MB cells, hillshade) + its Shackleton patch (5.3 MB):
+    # keep the repository's web data small
+    assert total < 30_000_000
 
 
 def test_fixture_values_vary_and_stay_consistent(generated):
@@ -76,6 +77,7 @@ def test_fixture_values_vary_and_stay_consistent(generated):
         (lambda m: m["ephemeris"].update(n=100), "ephemeris_fixture.bin"),
         (lambda m: m["time"].update(end="2029-01-01T00:00:00Z"), "not covered by the ephemeris"),
         (lambda m: m["hillshade"].update(file="nope.webp"), "nope.webp: file missing"),
+        (lambda m: m["grids"][0].update(bounds_m=[0, 0, 1]), "bounds_m"),
     ],
 )
 def test_validator_rejects_broken_manifest(scenario, change, expected):

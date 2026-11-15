@@ -25,6 +25,7 @@ from pipeline.hermes.ephemeris import API, default_table_path, read_table
 from pipeline.hermes.link import earth_metrics
 from pipeline.hestia.ice import diviner_cell_stats, psr_cell_fraction, shadow_proxy
 from pipeline.hyperion.dem import Dem, data_raw_dir, load_lola_dem, synthetic_dem
+from pipeline.hyperion.geometry import latlon_to_xy
 from pipeline.hyperion.grid import (
     SAMPLES_PER_CELL,
     cell_centres,
@@ -150,6 +151,11 @@ def build(args: argparse.Namespace) -> Path:
     out = Path(args.out) if args.out else REPO / "web" / "public" / "data" / args.scenario_id
     out.mkdir(parents=True, exist_ok=True)
     region = load_regions()[args.region]
+    is_cap = region["kind"] == "cap"
+    # a patch build adds its grid to the scenario already in `out` and leaves cap_r5 and the
+    # hillshade untouched
+    base_path = out / "manifest.json"
+    base = json.loads(base_path.read_text()) if not is_cap and base_path.exists() else None
     t_start, t_end = _utc(args.start_date), _utc(args.end_date)
 
     with stage("ephemeris"):
@@ -197,7 +203,8 @@ def build(args: argparse.Namespace) -> Path:
         horizon_truncated = trunc_pt.reshape(n, 8).any(axis=1)
 
     with stage("hillshade"):
-        bounds = write_hillshade(dem, out / "hillshade.webp")
+        bounds = base["hillshade"]["bounds_m"] if base else write_hillshade(
+            dem, out / "hillshade.webp")
 
     with stage("argus"):
         label_120 = label
@@ -273,7 +280,12 @@ def build(args: argparse.Namespace) -> Path:
         eph_bin = default_table_path()
         sources.append({"name": eph_bin.name, "url": API,
                         "sha256": hashlib.sha256(eph_bin.read_bytes()).hexdigest()})
-        is_cap = region["kind"] == "cap"
+        grid = {"id": grid_id, "res": region["res"], "n_cells": n,
+                "cells": f"cells_{grid_id}.json", "horizons": f"horizons_{grid_id}.bin"}
+        if not is_cap:
+            cx, cy = latlon_to_xy(region["center_lat_deg"], region["center_lon_deg"])
+            h = region["half_size_km"] * 1000.0
+            grid.update(name=args.region, bounds_m=[cx - h, cy - h, cx + h, cy + h])
         manifest = {
             "schema_version": 1,
             "scenario_id": args.scenario_id,
@@ -291,10 +303,18 @@ def build(args: argparse.Namespace) -> Path:
             "hillshade": {"file": "hillshade.webp", "bounds_m": bounds},
             "ephemeris": {"file": "../" + eph_bin.name, "t0": _z(table.t0),
                           "step_s": table.step_s, "n": table.n},
-            "grids": [{"id": grid_id, "res": region["res"], "n_cells": n,
-                       "cells": f"cells_{grid_id}.json", "horizons": f"horizons_{grid_id}.bin"}],
+            "grids": [grid],
             "notes": notes,
         }
+        if base:
+            for k in ("time", "params"):
+                if manifest[k] != base[k]:
+                    raise ValueError(f"{k} of this build differs from the scenario in {out}")
+            base["grids"] = [g for g in base["grids"] if g["id"] != grid_id] + [grid]
+            base["notes"] = [x for x in base.get("notes", []) if not x.startswith(f"[{grid_id}]")
+                             ] + [f"[{grid_id}] {x}" for x in notes]
+            base["sources"] = base["sources"] + [x for x in sources if x not in base["sources"]]
+            manifest = base
         if args.synthetic:
             manifest["notes"].insert(0, "Synthetic terrain (analytic sphere + crater + ridge): "
                                         "terrain metrics are not lunar data.")
@@ -311,7 +331,7 @@ def main(argv=None) -> None:
     p = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawTextHelpFormatter)
     p.add_argument("--scenario-id", default="south-pole-2027")
     p.add_argument("--region", default="cap_r5", help="key of pipeline/regions.json")
-    p.add_argument("--res", type=int, default=5, help="H3 resolution (taken from regions.json)")
+    p.add_argument("--res", type=int, default=None, help="H3 resolution (taken from regions.json)")
     p.add_argument("--start-date", default="2027-01-01")
     p.add_argument("--end-date", default="2028-01-01", help="exclusive")
     p.add_argument("--az-step", type=float, default=1.0)
@@ -324,7 +344,7 @@ def main(argv=None) -> None:
     p.add_argument("--cache-dir", default=str(REPO / "data" / "cache"))
     args = p.parse_args(argv)
     res = load_regions()[args.region]["res"]
-    if args.res != res:
+    if args.res is not None and args.res != res:
         p.error(f"--res {args.res} differs from regions.json ({args.region} is res {res})")
     build(args)
 

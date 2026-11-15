@@ -246,6 +246,17 @@
             "type": "string",
             "description": "horizons_<grid>.bin: Int16 LE, rows x 360 (azimuth 0..359 deg), unit 0.01 deg, row order as cells"
           },
+          "name": {
+            "type": "string",
+            "description": "OPTIONAL, detail patches: region key of pipeline/regions.json (shown in the UI)"
+          },
+          "bounds_m": {
+            "type": "array",
+            "items": {"type": "number"},
+            "minItems": 4,
+            "maxItems": 4,
+            "description": "OPTIONAL, detail patches: [xmin, ymin, xmax, ymax] of the patch square in south polar stereographic metres. Absent = the whole cap (overview grid)."
+          },
           "horizons_n_cells": {
             "type": "integer",
             "minimum": 1,
