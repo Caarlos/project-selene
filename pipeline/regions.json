@@ -1,0 +1,21 @@
+{
+  "_doc": "Analysis grids (PLAN.md 5.1). kind=cap: H3 cells with centre latitude <= lat_max_deg. kind=patch: cells whose centre lies in a square of half-size half_size_km, axis-aligned in the south polar stereographic plane, centred on center_lat_deg/center_lon_deg (east-positive longitude).",
+  "regions": {
+    "cap_r5": {
+      "kind": "cap",
+      "center_lat_deg": -90.0,
+      "center_lon_deg": 0.0,
+      "lat_max_deg": -80.0,
+      "res": 5
+    },
+    "shackleton_ridge": {
+      "kind": "patch",
+      "center_lat_deg": -89.67,
+      "center_lon_deg": 129.78,
+      "half_size_km": 25.0,
+      "res": 7,
+      "site": "Shackleton crater centre",
+      "source": "IAU/USGS Gazetteer of Planetary Nomenclature, feature 5450 'Shackleton' (Moon, crater, diameter 20.92 km): centre latitude -89.67, centre longitude 129.78 (+East, -180 to 180), first coordinate set listed on the page. https://planetarynames.wr.usgs.gov/Feature/5450 , retrieved 2026-11-14."
+    }
+  }
+}
