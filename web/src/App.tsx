@@ -3,6 +3,7 @@ import CellPanel from './components/astraea/CellPanel';
 import ColourLegend from './components/astraea/ColourLegend';
 import MapView from './components/astraea/MapView';
 import {HardFilters, McdaWeights, TopCells} from './components/astraea/McdaControls';
+import {HeaderDates} from './components/artemis/DateControl';
 import PresetButtons from './components/artemis/PresetButtons';
 import {docHref} from './components/apollo/headings';
 import {useStore} from './services/store';
@@ -48,10 +49,7 @@ export default function App() {
               <span className="text-slate-400">Scenario </span>
               <span data-testid="scenario-id">{manifest.scenario_id}</span>
             </span>
-            <span data-testid="date-range">
-              <span className="text-slate-400">Dates (UTC) </span>
-              {manifest.time.start.slice(0, 10)} to {manifest.time.end.slice(0, 10)} (end exclusive)
-            </span>
+            <HeaderDates scenario={scenario} />
             <span>
               <span className="text-slate-400">Cells </span>
               <span data-testid="cell-count">{scenario.grid.n_cells.toLocaleString('en-US')}</span>

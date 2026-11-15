@@ -1,15 +1,95 @@
 // Weight sliders, hard filters and the top-10 list (PLAN.md sections 7.1 and 7.2).
-import {useMemo} from 'react';
-import {FILTER_CONFIG, FILTER_IDS, KPI_CONFIG, KPI_IDS} from '../../services/kpiConfig';
-import {topCells, weightShares} from '../../services/mcda';
+import {useMemo, useState} from 'react';
+import {FILTER_CONFIG, FILTER_IDS, KPI_IDS, KPI_SETTING_LIMITS, kpiDescription} from '../../services/kpiConfig';
+import {effectiveSettings, topCells, weightShares} from '../../services/mcda';
 import {formatMetric} from '../../services/metrics';
 import {useStore} from '../../services/store';
+
+const REFERENCE_FIELDS = [
+  ['iceDistanceScale_km', 'Ice distance for score 0', 'km'],
+  ['iceIndexMin', 'Minimum ice index of an ice cell', ''],
+  ['shieldingScale', 'Shielding for score 1: 1 − sky view', ''],
+] as const;
+
+/** Basis selector and the editable reference values of the KPIs (they recompute the KPIs, not just the scores). */
+function KpiReference() {
+  const settings = useStore((s) => s.kpiSettings);
+  const custom = useStore((s) => s.customRange) !== null;
+  const setSettings = useStore((s) => s.setKpiSettings);
+  const reset = useStore((s) => s.resetKpiSettings);
+  const [resets, setResets] = useState(0); // remounts the uncontrolled inputs after a reset
+  const basis = effectiveSettings(settings, custom).sunCommsBasis;
+  return (
+    <div data-testid="kpi-reference" className="space-y-1 border-t border-slate-800 pt-2">
+      <h3 className="font-semibold">Reference values</h3>
+      <label className="block text-xs">
+        <span className="text-slate-400">Sunlight and Earth visibility use </span>
+        <select
+          data-testid="basis-select"
+          className="w-full rounded border border-slate-600 bg-slate-800 px-1 py-0.5 disabled:opacity-60"
+          value={basis}
+          disabled={custom}
+          onChange={(e) => setSettings({sunCommsBasis: e.target.value as 'best' | 'mean'})}
+        >
+          <option value="best">Best point of the cell</option>
+          <option value="mean">Mean over the cell</option>
+        </select>
+      </label>
+      {custom && (
+        <p className="text-xs text-amber-300" data-testid="basis-note">
+          Mean values exist only for the baseline dates, so the best point is used for the custom range.
+        </p>
+      )}
+      {REFERENCE_FIELDS.map(([id, label, unit]) => {
+        const lim = KPI_SETTING_LIMITS[id];
+        return (
+          <label key={`${id}-${resets}`} className="flex items-center justify-between gap-2 text-xs">
+            <span>{label}</span>
+            <span>
+              <input
+                type="number"
+                className="w-16 rounded border border-slate-600 bg-slate-900 px-1"
+                data-testid={`ref-${id}`}
+                min={lim.min}
+                max={lim.max}
+                step={lim.step}
+                defaultValue={settings[id]}
+                onBlur={(e) => (e.target.value = String(settings[id]))} // an out-of-range entry is not in use: show what is
+                onChange={(e) => {
+                  const v = e.target.valueAsNumber;
+                  if (v >= lim.min && v <= lim.max) setSettings({[id]: v});
+                }}
+              />{' '}
+              {unit}
+            </span>
+          </label>
+        );
+      })}
+      <button
+        type="button"
+        data-testid="ref-reset"
+        className="rounded border border-slate-600 px-2 py-0.5 text-xs hover:bg-slate-800"
+        onClick={() => {
+          reset();
+          setResets(resets + 1);
+        }}
+      >
+        Reset to defaults
+      </button>
+      <p className="text-xs text-slate-500">
+        The safe-slope limit (10°) is fixed by the pipeline; changing it needs a new pipeline run.
+      </p>
+    </div>
+  );
+}
 
 export function McdaWeights() {
   const weights = useStore((s) => s.weights);
   const kpis = useStore((s) => s.kpis);
   const hint = useStore((s) => s.scoreHint);
   const setWeight = useStore((s) => s.setWeight);
+  const settings = useStore((s) => s.kpiSettings);
+  const custom = useStore((s) => s.customRange) !== null;
   const resetMcda = useStore((s) => s.resetMcda);
   if (!kpis) return null;
   const share = weightShares(weights, kpis.available);
@@ -17,7 +97,7 @@ export function McdaWeights() {
     <section data-testid="mcda-weights" className="space-y-2 text-sm">
       <h2 className="text-base font-semibold">Criteria weights</h2>
       {KPI_IDS.map((k) => {
-        const def = KPI_CONFIG[k];
+        const def = kpiDescription(k, effectiveSettings(settings, custom));
         const ok = kpis.available[k];
         return (
           <div key={k} className={ok ? '' : 'opacity-60'}>
@@ -58,6 +138,7 @@ export function McdaWeights() {
       >
         Reset weights and filters
       </button>
+      <KpiReference />
     </section>
   );
 }

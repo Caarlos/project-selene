@@ -1,17 +1,15 @@
 // Right-hand panel: tabs for the cell inspector (W3), the ARTEMIS mission tools and the A/B comparator (W5).
-import {useState} from 'react';
 import Compare from '../artemis/Compare';
 import DateControl from '../artemis/DateControl';
 import DsnPanel from '../artemis/DsnPanel';
 import MissionTools from '../artemis/MissionTools';
 import type {Scenario} from '../../services/loader';
-import {useStore} from '../../services/store';
+import {PANEL_TABS as TABS, useStore} from '../../services/store';
 import Inspector from './Inspector';
 
-const TABS = ['Inspector', 'Mission tools', 'Compare', 'Dates'] as const;
-
 export default function CellPanel({scenario}: {scenario: Scenario}) {
-  const [tab, setTab] = useState<(typeof TABS)[number]>('Inspector');
+  const tab = useStore((s) => s.panelTab);
+  const setTab = useStore((s) => s.setPanelTab);
   const pinnedCount = useStore((s) => s.pinned.length);
   const custom = useStore((s) => s.customRange) !== null;
   return (
