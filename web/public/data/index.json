@@ -1,5 +1,9 @@
 [
   {
+    "id": "south-pole-2027",
+    "manifest": "south-pole-2027/manifest.json"
+  },
+  {
     "id": "fixture",
     "manifest": "fixture/manifest.json"
   }

@@ -1,0 +1,94 @@
+{
+  "schema_version": 1,
+  "scenario_id": "south-pole-2027",
+  "synthetic": false,
+  "generated_at": "2026-11-15T09:11:09Z",
+  "region": {
+    "name": "south_pole",
+    "lat_max": -80.0
+  },
+  "time": {
+    "start": "2027-01-01T00:00:00Z",
+    "end": "2028-01-01T00:00:00Z",
+    "step_s": 3600
+  },
+  "params": {
+    "az_step_deg": 1.0,
+    "range_km": 150.0,
+    "observer_height_m": 2.0,
+    "safe_slope_deg": 10.0,
+    "samples_per_cell": 8,
+    "slope_baseline_m": 80.0,
+    "ice_source": "diviner"
+  },
+  "sources": [
+    {
+      "name": "ldem_75s_120m.img",
+      "url": "https://pds-geosciences.wustl.edu/lro/lro-l-lola-3-rdr-v1/lrolol_1xxx/data/lola_gdr/polar/img/ldem_75s_120m.img",
+      "sha256": "ae3afc3c75c33d43666ca06c83ca08f0b12ef03b7d36d2d791d972730794391b"
+    },
+    {
+      "name": "ldem_75s_120m.lbl",
+      "url": "https://pds-geosciences.wustl.edu/lro/lro-l-lola-3-rdr-v1/lrolol_1xxx/data/lola_gdr/polar/img/ldem_75s_120m.lbl",
+      "sha256": "5c59b16ec8a610792b1776fa082e409c8cc9f6743757710d14876ef366acd99a"
+    },
+    {
+      "name": "ldem_80s_80m.jp2",
+      "url": "https://pds-geosciences.wustl.edu/lro/lro-l-lola-3-rdr-v1/lrolol_1xxx/data/lola_gdr/polar/jp2/ldem_80s_80m.jp2",
+      "sha256": "c088dd4f510e879375ee7e6f0d320ba84115f535f45fb592dd7f83a7d2e83ae3"
+    },
+    {
+      "name": "diviner_prp_south_500m.tif",
+      "url": "https://pds-geosciences.wustl.edu/lro/urn-nasa-pds-lro_diviner_derived1/extras/prp/dlre_prp_south.zip",
+      "sha256": "622eafda372a7b7021521c4a99b36336bd7d39b72ecfa2dcff67f16f9ed34399"
+    },
+    {
+      "name": "LPSR_75S_120M_201608.TIF",
+      "url": "https://pgda.gsfc.nasa.gov/data/MoonIllumination/LPSR_75S_120M_201608.TIF",
+      "sha256": "8af40cd8c1ca0c4b469803586581e5fc9baa0b001bd2cf8d28ccad29640e2b8e"
+    },
+    {
+      "name": "dlre_prp_south.zip",
+      "url": "https://pds-geosciences.wustl.edu/lro/urn-nasa-pds-lro_diviner_derived1/extras/prp/dlre_prp_south.zip",
+      "sha256": "324adf0596b9539207ad16d12836217a8a095424a21a0f944f3ecc6745090f32"
+    },
+    {
+      "name": "ephemeris_2026_2036.bin",
+      "url": "https://ssd.jpl.nasa.gov/api/horizons.api",
+      "sha256": "1c6ecc5062268bf9cef8c8a7a16d4f75d14d961bd48ab8317501173f0fdd3fe8"
+    }
+  ],
+  "projection": {
+    "type": "south_polar_stereographic",
+    "radius_m": 1737400
+  },
+  "hillshade": {
+    "file": "hillshade.webp",
+    "bounds_m": [
+      -304080.0,
+      -304080.0,
+      304080.0,
+      304080.0
+    ]
+  },
+  "ephemeris": {
+    "file": "../ephemeris_2026_2036.bin",
+    "t0": "2026-01-01T00:00:00Z",
+    "step_s": 3600,
+    "n": 87648
+  },
+  "grids": [
+    {
+      "id": "cap_r5",
+      "res": 5,
+      "n_cells": 14444,
+      "cells": "cells_cap_r5.json",
+      "horizons": "horizons_cap_r5.bin"
+    }
+  ],
+  "notes": [
+    "Slopes and TRI are measured on the 80 m LOLA DEM (ldem_80s_80m.jp2), not the 20 m product (not downloaded).",
+    "For 424 best points the longest dark run and for 5009 the longest Earth outage touches the start or end of the scenario, so it may be longer than reported.",
+    "1 cells have a ray that left the DEM before 150 km (horizon_truncated)."
+  ]
+}
