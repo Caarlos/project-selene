@@ -90,7 +90,8 @@ function Battery({scenario, row}: {scenario: Scenario; row: number}) {
   const [power_kW, setPower] = useState(1);
   const [energy_Wh_kg, setEnergy] = useState(200);
   const [dod, setDod] = useState(0.8);
-  const t = scenario.cells.dark_max_h_best[row];
+  const cells = useStore((s) => s.cells) ?? scenario.cells; // custom-range columns when a range is active
+  const t = cells.dark_max_h_best[row];
   const est = batteryEstimate(power_kW, t, energy_Wh_kg, dod);
   return (
     <section className="space-y-1" data-testid="battery">

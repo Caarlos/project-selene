@@ -256,6 +256,90 @@ try {
   await page.click('[data-testid=unpin] >> nth=0');
   assert.equal(await page.locator('[data-testid=compare-col]').count(), 1);
 
+  // 7b. custom dates (W4): month and year ranges in workers, progress, note, Baseline restores, DSN panel
+  await page.evaluate(() => window.__selene.store.getState().resetMcda());
+  await page.evaluate(() => window.__selene.store.getState().select(10));
+  await page.click('[data-testid=tab-dates]');
+  await page.waitForTimeout(500);
+  const checksum = () =>
+    page.evaluate(() => {
+      const s: Float32Array = window.__selene.store.getState().mcdaScore;
+      let h = 0;
+      for (let i = 0; i < s.length; i++) h = (h * 31 + Math.round(s[i] * 1e6)) | 0;
+      return h;
+    });
+  const applyRange = async (start: string, end: string) => {
+    await page.evaluate(() => {
+      const w = window as unknown as {__progress: number[]};
+      w.__progress = [];
+      window.__selene.store.subscribe((s: {customStatus: {phase: string; progress: number}}) => {
+        if (s.customStatus.phase === 'computing') w.__progress.push(s.customStatus.progress);
+      });
+    });
+    await page.fill('[data-testid=date-start]', start);
+    await page.fill('[data-testid=date-end]', end);
+    const t0 = Date.now();
+    await page.click('[data-testid=date-apply]');
+    await page.waitForSelector('[data-testid=date-note]', {timeout: 300_000});
+    const wall_ms = Date.now() - t0;
+    const progress = await page.evaluate(() => (window as unknown as {__progress: number[]}).__progress);
+    return {wall_ms, maxProgress: Math.max(...progress), ticks: progress.length};
+  };
+  const baseSum = await checksum();
+  const month = await applyRange('2027-03-01', '2027-03-30');
+  assert.equal(month.maxProgress, 1, 'progress did not reach 100%');
+  assert.notEqual(await checksum(), baseSum, 'scores did not change for the custom range');
+  const note = (await page.textContent('[data-testid=date-note]'))!;
+  assert.match(note, /best-point horizon/);
+  assert.match(note, /pipeline\.selene_build --start-date/);
+  assert.match((await page.textContent('[data-testid=date-missing]'))!, /11444 of 14444 cells have no horizon/);
+  assert.match((await page.textContent('[data-testid=date-active]'))!, /2027-03-01 to 2027-03-30/);
+  await page.screenshot({path: `${WEB}test-results/map-smoke-dates.png`});
+  // inspector follows the range: the recomputed value equals the (override) metric of the same cell
+  await page.click('[data-testid=tab-inspector]');
+  await page.waitForSelector('[data-testid=horizon-chart] canvas', {timeout: 30_000});
+  await page.waitForTimeout(500);
+  assert.equal(parseFloat((await page.textContent('[data-testid=recomputed-sun]'))!), parseFloat((await page.textContent('[data-testid=metric-sun_best_pct]'))!));
+  assert.match((await page.textContent('[data-testid=group-EOS]'))!, /baseline only/);
+  await page.screenshot({path: `${WEB}test-results/map-smoke-dates-inspector.png`});
+  await page.click('[data-testid=tab-dates]');
+  // DSN panel: three station percentages
+  await page.click('[data-testid=dsn-panel] summary');
+  await page.waitForSelector('[data-testid=dsn-result]', {timeout: 60_000});
+  const dsnPct: Record<string, string> = {};
+  for (const s of ['Madrid', 'Goldstone', 'Canberra']) {
+    dsnPct[s] = (await page.textContent(`[data-testid=dsn-pct-${s}]`))!;
+    assert.match(dsnPct[s], /^\d+\.\d %$/);
+  }
+  await page.waitForSelector('[data-testid=dsn-combined-pct]', {timeout: 30_000});
+  report.dsn = {...dsnPct, any: await page.textContent('[data-testid=dsn-any-pct]'), combined: await page.textContent('[data-testid=dsn-combined-pct]')};
+  await page.screenshot({path: `${WEB}test-results/map-smoke-dsn.png`});
+  // Baseline restores the original scores instantly
+  await page.click('[data-testid=date-baseline]');
+  assert.equal(await checksum(), baseSum, 'Baseline did not restore the scores');
+  assert.equal(await page.locator('[data-testid=date-note]').count(), 0);
+  // cancel: a one-year range stopped right away leaves the baseline untouched
+  await page.fill('[data-testid=date-start]', '2027-01-01');
+  await page.fill('[data-testid=date-end]', '2027-12-31');
+  await page.click('[data-testid=date-apply]');
+  await page.waitForSelector('[data-testid=date-cancel]');
+  await page.click('[data-testid=date-cancel]');
+  await page.waitForTimeout(1500);
+  assert.equal(await page.locator('[data-testid=date-progress]').count(), 0);
+  assert.equal(await page.evaluate(() => window.__selene.store.getState().customRange), null);
+  assert.equal(await checksum(), baseSum);
+  const year = await applyRange('2027-01-01', '2027-12-31');
+  assert.equal(year.maxProgress, 1);
+  await page.click('[data-testid=date-baseline]');
+  assert.equal(await checksum(), baseSum);
+  report.customDates = {
+    cores: await page.evaluate(() => navigator.hardwareConcurrency),
+    month_ms: month.wall_ms,
+    year_ms: year.wall_ms,
+    extrapolated_14444_cells_year_s: +((year.wall_ms / 3000) * 14444 / 1000).toFixed(1),
+    progressTicks: {month: month.ticks, year: year.ticks},
+  };
+
   // 8. error state
   await page.goto(`${URL_BASE}?scenario=nope`);
   await page.waitForSelector('[role=alert]');

@@ -52,9 +52,8 @@ function scaleBar(metresPerPx: number, maxPx = 140): {km: number; px: number} {
 
 function tooltip({index, layer}: PickingInfo) {
   if (layer?.id !== 'cells' || index < 0) return null;
-  const {scenario, colourBy, score, excluded} = useStore.getState();
-  if (!scenario) return null;
-  const {cells} = scenario;
+  const {scenario, cells, colourBy, score, excluded} = useStore.getState();
+  if (!scenario || !cells) return null;
   const value =
     colourBy === 'score'
       ? `Score: ${formatMetric(score[index], '0–1')}`

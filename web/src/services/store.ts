@@ -3,9 +3,13 @@
 import {create} from 'zustand';
 import {MISSION_PRESETS} from '../components/artemis/presets';
 import {FILTER_CONFIG, FILTER_IDS, KPI_IDS, type FilterId, type KpiId} from './kpiConfig';
-import {loadScenario, type Scenario} from './loader';
+import {cellPoint} from '../components/astraea/useCellSky';
+import {countMissing, withRangeValues} from './customCells';
+import {loadEphemeris, loadHorizons, loadScenario, type Scenario} from './loader';
 import {computeKpis, filtersInto, scoreInto, type FilterState, type Kpis, type ScoreHint, type Weights} from './mcda';
 import type {ColourField} from './metrics';
+import {startRangeJob, type RangeJob} from './rangeRunner';
+import type {Cells} from './types';
 
 export const MAX_PINNED = 3;
 
@@ -48,6 +52,14 @@ export function defaultFilters(): FilterState {
   return f;
 }
 
+export type CustomStatus =
+  | {phase: 'idle'}
+  | {phase: 'computing'; progress: number}
+  | {phase: 'error'; message: string};
+
+let job: RangeJob | null = null; // the running custom-range computation, if any
+let jobSeq = 0; // bumped by every apply / cancel / clear, so a stale async continuation can tell
+
 export interface SeleneState {
   status: 'loading' | 'ready' | 'error';
   /** Readable message when `status` is 'error'. */
@@ -76,11 +88,24 @@ export interface SeleneState {
   scoreHint: ScoreHint;
   /** Set by `focusCell`: the map centres on this projected point (metres); `seq` makes repeats distinct. */
   focus: {index: number; seq: number} | null;
-  /** Custom date range as ephemeris table row indices [startIndex, endIndex); null = the baseline scenario range. Set by W4. */
+  /** Custom date range as ephemeris table row indices [startIndex, endIndex); null = the baseline scenario range. */
   customRange: {startIndex: number; endIndex: number} | null;
+  /** The cells every reader uses: `scenario.cells`, or a shallow copy with the custom-range columns when `customRange` is set. */
+  cells: Cells | null;
+  /** KPIs of the loaded baseline, kept so "Baseline" restores instantly. */
+  baselineKpis: Kpis | null;
+  customStatus: CustomStatus;
+  /** Cells that have no horizon row, hence null for the custom range; 0 when no custom range is active. */
+  customMissing: number;
   /** Incremented whenever `score` or `excluded` changed in place: the map recolours on it. */
   colourVersion: number;
 
+  /** Computes the metrics of all cells that have a horizon over the row range in workers; replaces any running job. */
+  applyCustomRange(startIndex: number, endIndex: number): Promise<void>;
+  /** Stops a running computation; the active range is unchanged. */
+  cancelCustomRange(): void;
+  /** Back to the baseline scenario range: restores the loaded columns and KPIs, cancels a running job. */
+  clearCustomRange(): void;
   load(dataUrl: string, scenarioId: string | null): Promise<void>;
   select(index: number | null): void;
   /** Pins the cell, or unpins it if already pinned. Returns false when MAX_PINNED cells are already pinned. */
@@ -120,19 +145,31 @@ export const useStore = create<SeleneState>()((set, get) => ({
   range: null,
   colourVersion: 0,
   customRange: null,
+  cells: null,
+  baselineKpis: null,
+  customStatus: {phase: 'idle'},
+  customMissing: 0,
 
   async load(dataUrl, scenarioId) {
     set({status: 'loading', error: null});
     try {
       const scenario = await loadScenario(dataUrl, scenarioId);
       const n = scenario.grid.n_cells;
+      jobSeq++;
+      job?.cancel();
+      job = null;
+      const kpis = computeKpis(scenario.cells);
       set({
+        cells: scenario.cells,
+        baselineKpis: kpis,
+        customStatus: {phase: 'idle'},
+        customMissing: 0,
         scenario,
         selected: null,
         pinned: [],
         focus: null,
         customRange: null,
-        kpis: computeKpis(scenario.cells),
+        kpis,
         score: new Float32Array(n),
         mcdaScore: new Float32Array(n),
         excluded: new Uint8Array(n),
@@ -142,6 +179,66 @@ export const useStore = create<SeleneState>()((set, get) => ({
     } catch (e) {
       set({status: 'error', error: e instanceof Error ? e.message : String(e)});
     }
+  },
+
+  async applyCustomRange(startIndex, endIndex) {
+    const {scenario} = get();
+    if (!scenario) return;
+    job?.cancel();
+    const seq = ++jobSeq;
+    set({customStatus: {phase: 'computing', progress: 0}});
+    try {
+      const [horizons, eph] = await Promise.all([loadHorizons(scenario), loadEphemeris(scenario)]);
+      if (seq !== jobSeq || get().scenario !== scenario) return;
+      const mine = startRangeJob({
+        startIndex,
+        endIndex,
+        step_s: eph.step_s,
+        table: eph.table,
+        horizons,
+        nCells: scenario.grid.n_cells,
+        point(row) {
+          const p = cellPoint(scenario, row);
+          return {lat_deg: p.lat_deg, lon_deg: p.lon_deg, height_m: p.height_m};
+        },
+        onProgress: (progress) => job === mine && set({customStatus: {phase: 'computing', progress}}),
+      });
+      job = mine;
+      const values = await mine.done;
+      if (job !== mine) return; // cancelled or replaced
+      job = null;
+      if (values === null) return;
+      const cells = withRangeValues(scenario.cells, values);
+      set({
+        customRange: {startIndex, endIndex},
+        cells,
+        kpis: computeKpis(cells),
+        customMissing: countMissing(values),
+        customStatus: {phase: 'idle'},
+      });
+      get().rescore();
+    } catch (e) {
+      if (seq !== jobSeq) return;
+      job = null;
+      set({customStatus: {phase: 'error', message: e instanceof Error ? e.message : String(e)}});
+    }
+  },
+
+  cancelCustomRange() {
+    jobSeq++;
+    job?.cancel();
+    job = null;
+    set({customStatus: {phase: 'idle'}});
+  },
+
+  clearCustomRange() {
+    jobSeq++;
+    job?.cancel();
+    job = null;
+    const {scenario, baselineKpis} = get();
+    if (!scenario) return;
+    set({customRange: null, cells: scenario.cells, kpis: baselineKpis, customMissing: 0, customStatus: {phase: 'idle'}});
+    get().rescore();
   },
 
   select: (index) => set({selected: index}),
@@ -195,8 +292,9 @@ export const useStore = create<SeleneState>()((set, get) => ({
   rescore() {
     const {scenario, kpis, weights, filters, mcdaScore, excluded} = get();
     if (!scenario || !kpis) return;
+    const cells = get().cells ?? scenario.cells;
     const scoreHint = scoreInto(kpis, weights, mcdaScore);
-    const excludedCount = filtersInto(scenario.cells, filters, excluded);
+    const excludedCount = filtersInto(cells, filters, excluded);
     set({scoreHint, excludedCount});
     get().recolour();
   },
@@ -204,9 +302,10 @@ export const useStore = create<SeleneState>()((set, get) => ({
   recolour() {
     const {scenario, colourBy, score, mcdaScore, colourVersion} = get();
     if (!scenario) return;
+    const cells = get().cells ?? scenario.cells;
     let range: ValueRange | null = null;
     if (colourBy === 'score') score.set(mcdaScore);
-    else range = normaliseInto(scenario.cells[colourBy], score);
+    else range = normaliseInto(cells[colourBy], score);
     set({range, colourVersion: colourVersion + 1});
   },
 
