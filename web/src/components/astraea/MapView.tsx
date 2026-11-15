@@ -72,6 +72,7 @@ export default function MapView({scenario}: {scenario: Scenario}) {
   const pinned = useStore((s) => s.pinned);
   const colourVersion = useStore((s) => s.colourVersion);
   const select = useStore((s) => s.select);
+  const focus = useStore((s) => s.focus);
   const deckRef = useRef<DeckGLRef>(null);
   const [fitZoom, setFitZoom] = useState<number | null>(null);
   const [zoom, setZoom] = useState<number | null>(null);
@@ -80,10 +81,14 @@ export default function MapView({scenario}: {scenario: Scenario}) {
   const {manifest, polygons_m} = scenario;
   const bounds = manifest.hillshade.bounds_m;
   const grat = useMemo(() => graticule(manifest.region.lat_max), [manifest]);
-  const initialViewState = useMemo(
-    () => ({target: [0, 0, 0] as [number, number, number], zoom: fitZoom ?? -10, minZoom: (fitZoom ?? -10) - 1, maxZoom: -3}),
-    [fitZoom],
-  );
+  // A new `focus` replaces the initial view state, which makes deck.gl move the camera to the cell (same zoom, at least 1 in).
+  const initialViewState = useMemo(() => {
+    const fit = fitZoom ?? -10;
+    const c = focus ? projectStereo_m(scenario.cells.lat[focus.index], scenario.cells.lon[focus.index]) : [0, 0];
+    const z = focus ? Math.min(-3, Math.max(zoom ?? fit, fit + 1)) : fit;
+    return {target: [c[0], c[1], 0] as [number, number, number], zoom: z, minZoom: fit - 1, maxZoom: -3};
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- the camera moves only on a new focus, not on every zoom
+  }, [fitZoom, focus, scenario]);
 
   // Debug handle for the headless smoke test (web/tests/map-smoke.ts).
   useEffect(() => {
@@ -163,7 +168,9 @@ export default function MapView({scenario}: {scenario: Scenario}) {
           setZoom(z);
         }}
         onViewStateChange={({viewState}) => {
-          if (typeof viewState.zoom === 'number') setZoom(viewState.zoom);
+          if (typeof viewState.zoom === 'number') {
+            setZoom(viewState.zoom);
+          }
         }}
         onError={(e) => setRenderError(e.message)}
       />

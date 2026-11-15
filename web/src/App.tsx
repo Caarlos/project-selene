@@ -2,7 +2,8 @@ import {useEffect} from 'react';
 import CellPanel from './components/astraea/CellPanel';
 import ColourLegend from './components/astraea/ColourLegend';
 import MapView from './components/astraea/MapView';
-import {HardFiltersSlot, McdaWeightsSlot} from './components/astraea/Slots';
+import {HardFilters, McdaWeights, TopCells} from './components/astraea/McdaControls';
+import PresetButtons from './components/artemis/PresetButtons';
 import {useStore} from './services/store';
 
 export default function App() {
@@ -52,8 +53,10 @@ export default function App() {
       {status === 'ready' && scenario && (
         <div className="flex min-h-0 flex-1">
           <aside className="w-64 shrink-0 space-y-3 overflow-y-auto border-r border-slate-800 p-3">
-            <McdaWeightsSlot />
-            <HardFiltersSlot />
+            <PresetButtons />
+            <McdaWeights />
+            <HardFilters />
+            <TopCells />
           </aside>
           <main className="relative min-w-0 flex-1">
             <MapView scenario={scenario} />

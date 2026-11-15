@@ -137,7 +137,62 @@ try {
   for (const t of timings) assert(t.totalMs < RECOLOUR_BUDGET_MS, `recolour ${t.field}: ${t.totalMs} ms`);
   report.frameAfterRecolour = await frame();
 
-  // 6. error state
+  // 6. MCDA: the real slider and a preset button change the colours; JS time of slider ticks and preset clicks
+  await page.evaluate(() => window.__selene.store.getState().setColourBy('score'));
+  await page.waitForTimeout(800);
+  const s0 = await frame();
+  await page.locator('[data-testid=slider-ice]').fill('90');
+  await page.waitForTimeout(800);
+  const s1 = await frame();
+  assert.notEqual(s1.checksum, s0.checksum, 'slider did not change the colours');
+  report.shareIceAfterSlider = await page.textContent('[data-testid=share-ice]');
+  await page.click('[data-testid=preset-artemis3]');
+  await page.waitForTimeout(800);
+  const s2 = await frame();
+  assert.notEqual(s2.checksum, s1.checksum, 'preset did not change the colours');
+  assert.match((await page.textContent('[data-testid=excluded-count]'))!, /^[1-9][\d,]* cells excluded/);
+  assert.equal(await page.locator('[data-testid=filter-on-slope_p95_deg]').isChecked(), true);
+  assert.equal(await page.locator('[data-testid=filter-limit-slope_p95_deg]').inputValue(), '10');
+  assert.equal(await page.locator('[data-testid=slider-sun]').inputValue(), '30');
+  report.artemis3 = {excluded: await page.textContent('[data-testid=excluded-count]'), shareSun: await page.textContent('[data-testid=share-sun]')};
+  await page.waitForSelector('[data-testid=top-cells] li');
+  const topId = await page.textContent('[data-testid=top-cells] li:first-child code');
+  await page.click('[data-testid=top-cells] li:first-child button');
+  await page.waitForTimeout(800);
+  assert.equal(await page.textContent('[data-testid=selected-cell-id]'), topId);
+  assert.match((await page.textContent('[data-testid=cell-score-value]'))!, /^0\.\d\d/);
+  await page.screenshot({path: `${WEB}test-results/map-smoke-mcda.png`});
+  const mcda = await page.evaluate(async () => {
+    const {store, deck} = window.__selene;
+    const run = async (act: () => void) => {
+      const t0 = performance.now();
+      act();
+      const version = store.getState().colourVersion;
+      const committed = () =>
+        deck().props.layers.find((l: {id: string}) => l.id === 'cells').props.updateTriggers.getFillColor === version;
+      for (let i = 0; !committed(); i++) {
+        if (i > 200) throw new Error('React did not hand the new colours to deck.gl');
+        await new Promise<void>((r) => queueMicrotask(r));
+      }
+      deck().layerManager.updateLayers();
+      return performance.now() - t0;
+    };
+    const slider: number[] = [];
+    for (let i = 0; i < 10; i++) {
+      slider.push(await run(() => store.getState().setWeight(['sun', 'comms', 'terrain', 'ice'][i % 4], 10 + 7 * i)));
+      await new Promise((r) => setTimeout(r, 700));
+    }
+    const preset: number[] = [];
+    for (const id of ['clps', 'basecamp', 'artemis3']) {
+      preset.push(await run(() => store.getState().applyPreset(id)));
+      await new Promise((r) => setTimeout(r, 700));
+    }
+    return {sliderTickMs: slider, presetMs: preset};
+  });
+  report.mcdaTimings = mcda;
+  for (const t of [...mcda.sliderTickMs, ...mcda.presetMs]) assert(t < RECOLOUR_BUDGET_MS, `MCDA update ${t} ms`);
+
+  // 7. error state
   await page.goto(`${URL_BASE}?scenario=nope`);
   await page.waitForSelector('[role=alert]');
   assert.match((await page.textContent('[role=alert]'))!, /Unknown scenario "nope". Available: fixture/);

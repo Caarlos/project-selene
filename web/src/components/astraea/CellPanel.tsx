@@ -1,6 +1,7 @@
 // Placeholder cell panel: raw metrics of the selected cell. The full inspector (horizon chart) is task W3.
 import type {Scenario} from '../../services/loader';
 import {formatMetric, METRIC_INFO} from '../../services/metrics';
+import {KPI_CONFIG, KPI_IDS} from '../../services/kpiConfig';
 import {MAX_PINNED, useStore} from '../../services/store';
 import {NULLABLE_METRIC_COLUMNS} from '../../services/types';
 import {Slot} from './Slots';
@@ -10,6 +11,8 @@ export default function CellPanel({scenario}: {scenario: Scenario}) {
   const pinned = useStore((s) => s.pinned);
   const select = useStore((s) => s.select);
   const togglePin = useStore((s) => s.togglePin);
+  const kpis = useStore((s) => s.kpis);
+  useStore((s) => s.colourVersion); // score buffers change in place
   const {cells} = scenario;
 
   return (
@@ -31,6 +34,24 @@ export default function CellPanel({scenario}: {scenario: Scenario}) {
               {pinned.includes(selected) ? 'Unpin' : 'Pin'}
             </button>
           </div>
+          <dl className="grid grid-cols-[1fr_auto] gap-x-4 gap-y-1" data-testid="cell-score">
+            <dt className="font-semibold">Score</dt>
+            <dd className="text-right font-semibold" data-testid="cell-score-value">
+              {formatMetric(useStore.getState().mcdaScore[selected], '0–1')}
+              {useStore.getState().excluded[selected] ? ' (excluded by a filter)' : ''}
+            </dd>
+            {kpis &&
+              KPI_IDS.map((k) => (
+                <div key={k} className="contents">
+                  <dt className="text-slate-400" title={KPI_CONFIG[k].explanation}>
+                    {KPI_CONFIG[k].label} KPI
+                  </dt>
+                  <dd className="text-right" data-testid={`cell-kpi-${k}`}>
+                    {formatMetric(kpis.available[k] ? kpis.values[k][selected] : null, '0–1')}
+                  </dd>
+                </div>
+              ))}
+          </dl>
           <dl className="grid grid-cols-[1fr_auto] gap-x-4 gap-y-1">
             <dt className="text-slate-400">Centre latitude</dt>
             <dd className="text-right">{formatMetric(cells.lat[selected], '°')}</dd>

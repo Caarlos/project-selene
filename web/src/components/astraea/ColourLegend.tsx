@@ -31,14 +31,19 @@ export default function ColourLegend() {
       </label>
       <div className="mt-3 h-3 rounded" style={{background: `linear-gradient(to right, ${RAMP_CSS.join(', ')})`}} />
       <div className="mt-1 flex justify-between text-xs" data-testid="legend-range">
-        {range ? (
+        {colourBy === 'score' ? (
+          <>
+            <span>0 (low)</span>
+            <span>1 (high)</span>
+          </>
+        ) : range ? (
           <>
             <span>{formatMetric(range.min, unit)}</span>
             <span>{formatMetric(range.max, unit)}</span>
           </>
         ) : (
           <span className="text-slate-400">
-            {colourBy === 'score' ? 'Score not computed yet (MCDA engine, task W2)' : 'No value in this scenario'}
+            No value in this scenario
           </span>
         )}
       </div>
