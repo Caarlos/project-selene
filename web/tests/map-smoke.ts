@@ -19,8 +19,8 @@ declare const window: {__selene: any}; // eslint-disable-line @typescript-eslint
 
 execFileSync(process.execPath, [...VITE, 'build'], {cwd: WEB, stdio: 'inherit'});
 const preview = spawn(process.execPath, [...VITE, 'preview'], {cwd: WEB, stdio: 'ignore'});
-const browser = await chromium.launch({args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-webgl']});
 const report: Record<string, unknown> = {};
+const browser = await chromium.launch({args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-webgl']});
 try {
   for (let i = 0; ; i++) {
     if (await fetch(URL_BASE).then((r) => r.ok, () => false)) break;
@@ -192,7 +192,71 @@ try {
   report.mcdaTimings = mcda;
   for (const t of [...mcda.sliderTickMs, ...mcda.presetMs]) assert(t < RECOLOUR_BUDGET_MS, `MCDA update ${t} ms`);
 
-  // 7. error state
+  // 7. inspector (W3) and ARTEMIS tools (W5) at 1366x768
+  await page.setViewportSize({width: 1366, height: 768});
+  await page.waitForTimeout(500);
+  await page.evaluate(() => window.__selene.store.getState().select(10));
+  await page.waitForSelector('[data-testid=horizon-chart] canvas', {timeout: 30_000});
+  await page.waitForTimeout(500);
+  const sky: Record<string, number> = {};
+  for (const id of ['sun', 'earth', 'dark', 'outage']) {
+    const text = (await page.textContent(`[data-testid=recomputed-${id}]`))!;
+    sky[id] = parseFloat(text);
+    assert(Number.isFinite(sky[id]), `recomputed ${id} is "${text}"`);
+  }
+  assert(sky.sun >= 0 && sky.sun <= 100 && sky.earth >= 0 && sky.earth <= 100);
+  report.recomputed = {...sky, storedSun: await page.textContent('[data-testid=stored-sun]')};
+  const chartBox = (await page.locator('[data-testid=horizon-chart] canvas').boundingBox())!;
+  assert(chartBox.width > 200 && chartBox.height > 100, 'chart canvas has no size');
+  assert.match((await page.textContent('[data-testid=synthetic-note]'))!, /Synthetic scenario/);
+  assert.match((await page.textContent('[data-testid=group-HESTIA]'))!, /Ice stability index/);
+  await page.screenshot({path: `${WEB}test-results/map-smoke-inspector.png`});
+  await page.evaluate(() => window.__selene.store.getState().select(5000));
+  await page.waitForSelector('[data-testid=no-horizon]', {timeout: 10_000});
+  assert.equal(await page.locator('[data-testid=horizon-chart]').count(), 0);
+
+  // JS time of the four date-dependent metrics for one cell over one year of hourly steps (in the browser)
+  report.rangeMetricsMsPerCellYear = await page.evaluate(() => {
+    const {rangeMetrics} = window.__selene;
+    const table = new Float32Array(8760 * 5);
+    for (let k = 0; k < 8760; k++) table.set([((k * 0.55) % 360) - 180, 1.5 * Math.sin(k / 1400), ((k * 0.03) % 360) - 180, 6 * Math.sin(k / 650), 384_400], k * 5);
+    const horizon = new Int16Array(360).fill(150);
+    const out = new Float64Array(4);
+    for (let i = 0; i < 20; i++) rangeMetrics(-89.5, 20, 1000, horizon, table, 0, 8760, 3600, out);
+    const t0 = performance.now();
+    for (let i = 0; i < 200; i++) rangeMetrics(-89.5, 20, 1000, horizon, table, 0, 8760, 3600, out);
+    return +((performance.now() - t0) / 200).toFixed(3);
+  });
+
+  // mission tools: base to ice, battery
+  await page.evaluate(() => window.__selene.store.getState().select(10));
+  await page.click('[data-testid=tab-mission]');
+  const iceCell = await page.evaluate(() => window.__selene.store.getState().kpis.nearestIce[10]);
+  if (iceCell >= 0 && iceCell !== 10) {
+    assert.match((await page.textContent('[data-testid=ice-distance]'))!, /^\d+\.\d km$/);
+    report.baseToIce = {distance: await page.textContent('[data-testid=ice-distance]'), slope: await page.textContent('[data-testid=ice-slope]')};
+    await page.click('[data-testid=goto-ice]');
+    await page.waitForTimeout(500);
+    assert.notEqual(await page.evaluate(() => window.__selene.store.getState().selected), 10);
+    await page.evaluate(() => window.__selene.store.getState().select(10));
+  }
+  report.battery = await page.textContent('[data-testid=battery]');
+  await page.screenshot({path: `${WEB}test-results/map-smoke-tools.png`});
+
+  // comparator: pin two cells, two columns
+  await page.click('[data-testid=tab-inspector]');
+  await page.click('[data-testid=pin-button]');
+  await page.evaluate(() => window.__selene.store.getState().select(20));
+  await page.click('[data-testid=pin-button]');
+  await page.click('[data-testid=tab-compare]');
+  assert.equal(await page.locator('[data-testid=compare-col]').count(), 2);
+  assert(await page.locator('[data-best=true]').count() > 0, 'no best value highlighted');
+  await page.waitForTimeout(800);
+  await page.screenshot({path: `${WEB}test-results/map-smoke-compare.png`});
+  await page.click('[data-testid=unpin] >> nth=0');
+  assert.equal(await page.locator('[data-testid=compare-col]').count(), 1);
+
+  // 8. error state
   await page.goto(`${URL_BASE}?scenario=nope`);
   await page.waitForSelector('[role=alert]');
   assert.match((await page.textContent('[role=alert]'))!, /Unknown scenario "nope". Available: fixture/);
