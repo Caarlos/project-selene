@@ -1,6 +1,7 @@
 import {readFileSync} from 'node:fs';
+import {getResolution} from 'h3-js';
 import {afterEach, describe, expect, it, vi} from 'vitest';
-import {assertCellSet, decodeEphemeris, decodeHorizons, loadHorizons, loadScenario, parseIndex, pickScenario} from './loader';
+import {assertCellSet, decodeEphemeris, decodeHorizons, loadHorizons, loadPatch, loadScenario, parseIndex, pickScenario} from './loader';
 import {parseManifest, type Cells} from './types';
 
 const DATA_URL = 'http://test.invalid/app/data/';
@@ -135,5 +136,42 @@ describe('ephemeris', () => {
     const eph = manifest().ephemeris;
     expect(decodeEphemeris(arrayBuffer(`fixture/${eph.file}`), eph).table).toHaveLength(8760 * 5);
     expect(() => decodeEphemeris(new ArrayBuffer(20), eph)).toThrow(/20 bytes, expected 175200/);
+  });
+});
+
+describe('detail patch of the real scenario', () => {
+  it('rejects a patch whose cells do not match the manifest', async () => {
+    const real = json('south-pole-2027/cells_shackleton_ridge.json') as {h3: string[]};
+    stubFetch({'south-pole-2027/cells_shackleton_ridge.json': {...real, h3: real.h3.slice(1)}});
+    const s = await loadScenario(DATA_URL, 'south-pole-2027');
+    await expect(loadPatch(s, 'shackleton_ridge')).rejects.toThrow(/column\(s\) missing or not of length/);
+  });
+
+  it('is not downloaded with the scenario, then loads lazily, validated, as rows after the overview', async () => {
+    const requested: string[] = [];
+    stubFetch();
+    const inner = globalThis.fetch;
+    vi.stubGlobal('fetch', (url: string) => (requested.push(url), inner(url)));
+    const s = await loadScenario(DATA_URL, 'south-pole-2027');
+    expect(s.patches.map((g) => g.id)).toEqual(['shackleton_ridge']);
+    expect(requested.some((u) => u.includes('shackleton'))).toBe(false);
+    const p = await loadPatch(s, 'shackleton_ridge');
+    const n0 = s.grid.n_cells;
+    const patch = p.grids[1];
+    expect(p.cells.h3).toHaveLength(n0 + patch.grid.n_cells);
+    expect(p.polygons_m).toHaveLength(p.cells.h3.length);
+    expect(p.cells.h3[n0 - 1]).toBe(s.cells.h3[n0 - 1]); // overview rows keep their index
+    expect(getResolution(p.cells.h3[n0])).toBe(7);
+    expect(patch.rowStart).toBe(n0);
+    // overview cells whose centre is in the 50 km square: about 2500 km2 / 20 km2
+    expect(patch.covered.length).toBeGreaterThan(80);
+    expect(patch.covered.length).toBeLessThan(160);
+    expect(patch.covered.every((i) => i < n0)).toBe(true);
+    expect(await loadPatch(p, 'shackleton_ridge')).toBe(p); // loading twice adds nothing
+    const h = await loadHorizons(p);
+    expect(h.n_rows).toBe(p.cells.h3.length);
+    expect(h.row_cdeg(n0 + 5)).toHaveLength(360);
+    expect(h.row_cdeg(0)).toHaveLength(360);
+    await expect(loadPatch(s, 'nope')).rejects.toThrow(/Unknown detail patch/);
   });
 });

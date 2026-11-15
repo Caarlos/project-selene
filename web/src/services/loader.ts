@@ -1,7 +1,7 @@
 // Data loading (PLAN.md section 6): index -> manifest -> cells, plus lazy horizons and ephemeris tables.
 // Every failure throws an Error whose message is shown to the user as is.
 import {getResolution, isValidCell} from 'h3-js';
-import {cellPolygon_m} from './projection';
+import {cellPolygon_m, projectStereo_m} from './projection';
 import {parseCells, parseManifest, type Cells, type GridInfo, type Manifest, type ScenarioIndexEntry} from './types';
 
 /** Azimuths per horizon row (0..359 deg). */
@@ -13,12 +13,25 @@ export interface Scenario {
   manifest: Manifest;
   /** Absolute URL of manifest.json; every file named in the manifest resolves against it. */
   manifestUrl: string;
-  /** The overview grid (`manifest.grids[0]`) that `cells` and `polygons_m` describe. */
+  /** The overview grid (`manifest.grids[0]`); its cells are rows 0..n_cells-1 of `cells`. */
   grid: GridInfo;
+  /** Overview cells, followed by the cells of each loaded detail patch (see `grids`). */
   cells: Cells;
   /** Per cell, row order as `cells`: outline in projection metres, flat [x0, y0, x1, y1, ...]. */
   polygons_m: number[][];
+  /** Row ranges of `cells` per loaded grid: the overview first, then the loaded patches. */
+  grids: LoadedGrid[];
+  /** Detail patches the manifest offers (grids with `bounds_m`), loaded or not. */
+  patches: GridInfo[];
   hillshadeUrl: string;
+}
+
+export interface LoadedGrid {
+  grid: GridInfo;
+  /** First row of this grid in `Scenario.cells`. */
+  rowStart: number;
+  /** Patches only: rows of the overview cells whose centre lies inside the patch square (the ones a patch replaces). */
+  covered: number[];
 }
 
 /** Best-point horizon profiles of one grid. */
@@ -107,6 +120,8 @@ export async function loadScenario(dataUrl: string, scenarioId: string | null): 
     grid,
     cells,
     polygons_m: cells.h3.map(cellPolygon_m),
+    grids: [{grid, rowStart: 0, covered: []}],
+    patches: manifest.grids.filter((g) => g.bounds_m),
     hillshadeUrl: new URL(manifest.hillshade.file, manifestUrl).href,
   };
 }
@@ -166,10 +181,56 @@ function once<T>(url: string, decode: (buf: ArrayBuffer) => T): Promise<T> {
   return p;
 }
 
-/** Lazy: horizons of the scenario's overview grid, downloaded on first call. */
+/** Lazy: horizons of the overview grid and of every loaded patch (rows as `Scenario.cells`), downloaded on first call. */
 export function loadHorizons(scenario: Scenario): Promise<Horizons> {
-  const url = new URL(scenario.grid.horizons, scenario.manifestUrl).href;
-  return once(url, (buf) => decodeHorizons(buf, scenario.grid));
+  const part = ({grid}: LoadedGrid) => once(new URL(grid.horizons, scenario.manifestUrl).href, (buf) => decodeHorizons(buf, grid));
+  if (scenario.grids.length === 1) return part(scenario.grids[0]);
+  return Promise.all(scenario.grids.map(part)).then((parts) => ({
+    n_rows: scenario.grids[parts.length - 1].rowStart + parts[parts.length - 1].n_rows,
+    row_cdeg(row) {
+      let i = parts.length - 1;
+      while (i > 0 && scenario.grids[i].rowStart > row) i--;
+      return parts[i].row_cdeg(row - scenario.grids[i].rowStart);
+    },
+  }));
+}
+
+/** Pure: `scenario` with the cells of patch `grid` appended as new rows; overview rows keep their indices. */
+export function withPatch(scenario: Scenario, grid: GridInfo, patch: Cells): Scenario {
+  if (!grid.bounds_m) throw new Error(`grid ${grid.id} has no bounds_m: not a detail patch`);
+  if (scenario.grids.some((g) => g.grid.id === grid.id)) return scenario;
+  const [x0, y0, x1, y1] = grid.bounds_m;
+  const covered: number[] = [];
+  for (let i = 0; i < scenario.grid.n_cells; i++) {
+    const [x, y] = projectStereo_m(scenario.cells.lat[i], scenario.cells.lon[i]);
+    if (x >= x0 && x <= x1 && y >= y0 && y <= y1) covered.push(i);
+  }
+  const cells = {...scenario.cells};
+  for (const k of Object.keys(cells) as (keyof Cells)[]) (cells as Record<string, unknown[]>)[k] = [...scenario.cells[k], ...patch[k]];
+  return {
+    ...scenario,
+    cells,
+    polygons_m: [...scenario.polygons_m, ...patch.h3.map(cellPolygon_m)],
+    grids: [...scenario.grids, {grid, rowStart: scenario.cells.h3.length, covered}],
+  };
+}
+
+/** Lazy: downloads and validates the cells of a detail patch (like the overview), returns the scenario extended by them. */
+export async function loadPatch(scenario: Scenario, gridId: string): Promise<Scenario> {
+  const grid = scenario.patches.find((g) => g.id === gridId);
+  if (!grid) throw new Error(`Unknown detail patch "${gridId}"`);
+  const cells = await once(new URL(grid.cells, scenario.manifestUrl).href, (buf) => {
+    let doc: unknown;
+    try {
+      doc = JSON.parse(new TextDecoder().decode(buf));
+    } catch {
+      throw new Error(`${grid.cells}: not valid JSON`);
+    }
+    const parsed = parseCells(doc, grid.n_cells);
+    assertCellSet(parsed, grid);
+    return parsed;
+  });
+  return withPatch(scenario, grid, cells);
 }
 
 /** Lazy: the ephemeris table named in the manifest, downloaded on first call. */
