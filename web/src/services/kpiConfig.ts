@@ -31,7 +31,7 @@ export const DEFAULT_KPI_SETTINGS: KpiSettings = {...KPI_ANCHORS, sunCommsBasis:
 /** Limits of the editable reference values (inputs and the reset button). */
 export const KPI_SETTING_LIMITS = {
   iceDistanceScale_km: {min: 1, max: 200, step: 1},
-  iceIndexMin: {min: 0.01, max: 1, step: 0.05},
+  iceIndexMin: {min: 0.01, max: 1, step: 0.01},
   shieldingScale: {min: 0.05, max: 1, step: 0.05},
 } as const;
 

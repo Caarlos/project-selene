@@ -54,6 +54,7 @@ function KpiReference() {
                 max={lim.max}
                 step={lim.step}
                 defaultValue={settings[id]}
+                onBlur={(e) => (e.target.value = String(settings[id]))} // an out-of-range entry is not in use: show what is
                 onChange={(e) => {
                   const v = e.target.valueAsNumber;
                   if (v >= lim.min && v <= lim.max) setSettings({[id]: v});

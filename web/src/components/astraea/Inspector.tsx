@@ -2,10 +2,10 @@
 import {lazy, Suspense} from 'react';
 import {KPI_IDS, kpiDescription} from '../../services/kpiConfig';
 import type {Scenario} from '../../services/loader';
-import {docHref} from '../apollo/headings';
 import {METRIC_INFO} from '../../services/metrics';
 import {effectiveSettings} from '../../services/mcda';
 import {MAX_PINNED, useStore} from '../../services/store';
+import DocLink from './DocLink';
 import {METRIC_GROUPS} from './metricGroups';
 import {useCellSky, type CellSky} from './useCellSky';
 
@@ -78,8 +78,9 @@ function SunSummary({sky}: {sky: CellSky}) {
   if (max === null) return null;
   return (
     <p className="mt-2 rounded bg-slate-800 p-2 text-xs text-slate-300" data-testid="sun-summary">
-      Highest Sun at this cell in the active dates: <strong data-testid="sun-max-elevation">{max.toFixed(1)}°</strong> above
-      the flat horizontal. Sunlight arrives almost horizontally, so solar panels must be vertical or mast-mounted and
+      Highest Sun sampled over the active dates: about <strong data-testid="sun-max-elevation">{max.toFixed(1)}°</strong>
+      {max < 0 ? ' (below the horizontal: the Sun does not rise above flat ground). ' : ' elevation. '}
+      Sunlight arrives almost horizontally, so solar panels must be vertical or mast-mounted and
       rotate through 360°.
     </p>
   );
@@ -153,7 +154,10 @@ export default function Inspector({scenario}: {scenario: Scenario}) {
           {latText(cells.lat[selected])}, {lonText(cells.lon[selected])}, elevation {show(cells.elev_m[selected], 'm')}
         </p>
         <dl className="grid grid-cols-[1fr_auto] gap-x-4 gap-y-1" data-testid="cell-score">
-          <dt className="font-semibold">Score</dt>
+          <dt className="font-semibold">
+            Score
+            <DocLink id="score" />
+          </dt>
           <dd className="text-right font-semibold" data-testid="cell-score-value">
             {show(mcdaScore[selected], '0–1')}
             {excluded[selected] ? ' (excluded by a filter)' : ''}
@@ -166,7 +170,10 @@ export default function Inspector({scenario}: {scenario: Scenario}) {
             return (
               <div key={k} title={`${def.explanation} Unit: ${def.unit}.`}>
                 <div className="flex justify-between text-xs">
-                  <span className="text-slate-400">{def.label}</span>
+                  <span className="text-slate-400">
+                    {def.label}
+                    <DocLink id={`kpi_${k}`} />
+                  </span>
                   <span data-testid={`cell-kpi-${k}`}>{show(v, '0–1')}</span>
                 </div>
                 <div className="h-1.5 rounded bg-slate-800">
@@ -193,9 +200,7 @@ export default function Inspector({scenario}: {scenario: Scenario}) {
                     {baselineOnly && custom && (
                       <span className="ml-1 rounded bg-slate-700 px-1 text-[10px] text-slate-200">baseline only</span>
                     )}
-                    <a href={docHref('primer', id)} title={`Formula and data source of ${id}`} className="ml-1 text-sky-400 hover:underline">
-                      ?
-                    </a>
+                    <DocLink id={id} />
                   </dt>
                   <dd className="text-right" data-testid={`metric-${id}`}>
                     {show(cells[id][selected], METRIC_INFO[id].unit)}

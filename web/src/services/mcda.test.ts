@@ -272,6 +272,17 @@ describe('editable reference values and basis (W8)', () => {
     useStore.setState({customRange: null});
     useStore.getState().resetKpiSettings();
   });
+
+  it('settings changed during a custom range apply after clearCustomRange', () => {
+    useStore.setState({scenario: {grid: {n_cells: 2}, cells} as never, cells, kpis: null, baselineKpis: null, customRange: {startIndex: 0, endIndex: 1}});
+    useStore.setState({mcdaScore: new Float32Array(2), excluded: new Uint8Array(2), score: new Float32Array(2)});
+    useStore.getState().setKpiSettings({iceDistanceScale_km: 20, sunCommsBasis: 'mean'});
+    useStore.getState().clearCustomRange();
+    const k = useStore.getState().kpis!;
+    expect(k.values.sun[1]).toBeCloseTo(0.4); // mean column
+    expect(k.values.ice[1]).toBeCloseTo(1 - d_km / 20, 5);
+    useStore.getState().resetKpiSettings();
+  });
 });
 
 describe('performance', () => {

@@ -1,8 +1,9 @@
 // ARTEMIS date control (PLAN.md 7.3): custom date range computed in the browser, with progress, cancel and the
 // fidelity note. Dates are UTC days, both included.
-import {useState} from 'react';
-import type {Scenario} from '../../services/loader';
+import {useEffect, useState} from 'react';
+import {loadEphemeris, type Scenario} from '../../services/loader';
 import {addDays, isoDay, lunarMonthEnd, MAX_RANGE_DAYS, monthRange, validateRange} from '../../services/rangeProtocol';
+import {extremeMonths, monthMeanSubSolarLat_deg} from '../../services/seasons';
 import {useStore} from '../../services/store';
 
 /** Header element: the range being analysed, "custom" and "computing…" marked; a click opens the Dates tab. */
@@ -53,6 +54,18 @@ export default function DateControl({scenario}: {scenario: Scenario}) {
   const day = (index: number) => isoDay(t0_ms + index * step_s * 1000);
   const [start, setStart] = useState(customRange ? day(customRange.startIndex) : baseStart);
   const [end, setEnd] = useState(customRange ? day(customRange.endIndex - 1) : lunarMonthEnd(baseStart));
+  // Polar summer / winter months of the base year, read from the ephemeris (the cycle drifts about 19 days a year)
+  const [seasons, setSeasons] = useState<{summer: number; winter: number} | null>(null);
+  useEffect(() => {
+    let live = true;
+    void loadEphemeris(scenario).then((e) => {
+      const m = monthMeanSubSolarLat_deg(e.table, Date.parse(e.t0), e.step_s, e.n, new Date(scenario.manifest.time.start).getUTCFullYear());
+      if (live) setSeasons(extremeMonths(m));
+    });
+    return () => {
+      live = false;
+    };
+  }, [scenario]);
   const status = useStore((s) => s.customStatus);
   const missing = useStore((s) => s.customMissing);
   const apply = useStore((s) => s.applyCustomRange);
@@ -117,20 +130,30 @@ export default function DateControl({scenario}: {scenario: Scenario}) {
         >
           Next lunar month from start
         </button>
-        {([[1, 'south summer'], [4, 'autumn'], [7, 'south winter'], [10, 'spring']] as const).map(([m, season]) => {
-          const r = monthRange(baseYear, m);
-          return (
-            <button
-              key={m}
-              type="button"
-              className={btn}
-              title={`Apply ${r.start} to ${r.end}`}
-              onClick={() => run(r.start, r.end)}
-            >
-              {new Date(Date.UTC(baseYear, m - 1, 1)).toLocaleString('en', {month: 'short', timeZone: 'UTC'})} {baseYear} ({season})
-            </button>
-          );
-        })}
+        {seasons &&
+          (
+            [
+              [seasons.summer, 'polar summer'],
+              [seasons.winter, 'polar winter'],
+            ] as const
+          )
+            .slice()
+            .sort((x, y) => x[0] - y[0])
+            .map(([m, season]) => {
+              const r = monthRange(baseYear, m);
+              return (
+                <button
+                  key={m}
+                  type="button"
+                  className={btn}
+                  data-testid={`date-${season.replace(' ', '-')}`}
+                  title={`Apply ${r.start} to ${r.end}. Season from the sub-solar latitude in the ephemeris.`}
+                  onClick={() => run(r.start, r.end)}
+                >
+                  {new Date(Date.UTC(baseYear, m - 1, 1)).toLocaleString('en', {month: 'short', timeZone: 'UTC'})} {baseYear} ({season})
+                </button>
+              );
+            })}
         <button type="button" className={btn} onClick={() => run(start, addDays(start, MAX_RANGE_DAYS - 1))}>
           One year
         </button>
