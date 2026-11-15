@@ -6,7 +6,7 @@ export default defineConfig({
   base: './', // static hosting under any sub-path
   plugins: [react(), tailwindcss()],
   // localhost only: never expose the dev server (WARNING.md)
-  server: {host: '127.0.0.1', port: 5173, strictPort: true},
+  server: {host: '127.0.0.1', port: 5173, strictPort: true, fs: {allow: ['..']}}, // docs/ and assets/ sit above web/
   preview: {host: '127.0.0.1', port: 4173, strictPort: true},
   test: {include: ['src/**/*.test.ts']},
 });
