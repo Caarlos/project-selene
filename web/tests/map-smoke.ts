@@ -66,7 +66,7 @@ try {
     });
 
   // 1. loads the fixture
-  await page.goto(URL_BASE);
+  await page.goto(`${URL_BASE}?scenario=fixture`);
   await ready(page);
   await page.waitForTimeout(1500);
   assert.equal(await page.textContent('[data-testid=scenario-id]'), 'fixture');
@@ -340,10 +340,102 @@ try {
     progressTicks: {month: month.ticks, year: year.ticks},
   };
 
+  // 7c. main flow on the default real scenario (W7 documentation, W8 dates and reference values)
+  await page.goto(URL_BASE);
+  await ready(page);
+  await page.waitForTimeout(1500);
+  assert.equal(await page.textContent('[data-testid=scenario-id]'), 'south-pole-2027');
+  assert.equal(await page.textContent('[data-testid=cell-count]'), '14,444');
+  assert.equal(await page.locator('[role=status]').count(), 0, 'real scenario is labelled synthetic');
+  const realId = latLngToCell(-85, 45, 5);
+  const [rlat, rlon] = cellToLatLng(realId);
+  const [rx, ry] = await page.evaluate((xy) => window.__selene.deck().getViewports()[0].project(xy) as [number, number], projectStereo_m(rlat, rlon));
+  const rbox = (await page.locator('[data-testid=map] canvas').boundingBox())!;
+  await page.mouse.move(rbox.x + rx, rbox.y + ry);
+  await page.mouse.click(rbox.x + rx, rbox.y + ry);
+  await page.waitForSelector('[data-testid=selected-cell-id]', {timeout: 10_000});
+  assert.equal(await page.textContent('[data-testid=selected-cell-id]'), realId);
+  assert((await page.textContent('[data-testid=sun-summary]'))!.length > 20, 'sun summary is empty');
+  // the legend link entry needs a cell with a distinct ice-bearing cell: take one from the KPIs
+  await page.evaluate(() => {
+    const {store} = window.__selene;
+    const {nearestIce} = store.getState().kpis;
+    store.getState().select(nearestIce.findIndex((n: number, i: number) => n >= 0 && n !== i));
+  });
+  await page.waitForSelector('[data-testid=legend-ice-link]', {timeout: 10_000});
+  assert.equal(await page.locator('[data-testid=legend-selected]').count(), 1);
+  await page.waitForTimeout(800);
+  await page.screenshot({path: `${WEB}test-results/real-selected.png`});
+  // reference value and basis change the scores
+  await page.evaluate(() => window.__selene.store.getState().setColourBy('score'));
+  const real0 = await checksum();
+  await page.fill('[data-testid=ref-iceDistanceScale_km]', '5');
+  await page.waitForTimeout(500);
+  const real1 = await checksum();
+  assert.notEqual(real1, real0, 'reference value did not change the scores');
+  await page.selectOption('[data-testid=basis-select]', 'mean');
+  await page.waitForTimeout(500);
+  assert.notEqual(await checksum(), real1, 'basis did not change the scores');
+  await page.click('[data-testid=ref-reset]');
+  await page.waitForTimeout(500);
+  assert.equal(await checksum(), real0, 'reset did not restore the scores');
+  // header date button opens the Dates tab; polar-winter preset runs with progress and marks the header custom
+  await page.click('[data-testid=date-range]');
+  await page.waitForSelector('[data-testid=date-control]');
+  await page.evaluate(() => {
+    const w = window as unknown as {__progress: number[]};
+    w.__progress = [];
+    window.__selene.store.subscribe((s: {customStatus: {phase: string; progress: number}}) => {
+      if (s.customStatus.phase === 'computing') w.__progress.push(s.customStatus.progress);
+    });
+  });
+  const tWinter = Date.now();
+  await page.click('[data-testid=date-polar-winter]');
+  await page.waitForSelector('[data-testid=date-note]', {timeout: 60_000});
+  const winter_ms = Date.now() - tWinter;
+  const winterProgress = await page.evaluate(() => (window as unknown as {__progress: number[]}).__progress);
+  assert(winterProgress.length > 1 && Math.max(...winterProgress) === 1, 'no progress reported for the preset');
+  assert.match((await page.textContent('[data-testid=date-range]'))!, /custom/i);
+  assert.match((await page.textContent('[data-testid=date-active]'))!, /Custom range active/);
+  assert.notEqual(await checksum(), real0, 'custom range did not change the scores');
+  assert.equal(await page.locator('[data-testid=basis-select]').isDisabled(), true);
+  await page.waitForTimeout(800);
+  await page.screenshot({path: `${WEB}test-results/real-dates.png`});
+  report.realFlow = {winter_ms, winterProgressTicks: winterProgress.length, header: await page.textContent('[data-testid=date-range]')};
+  // documentation: KaTeX renders, the deep link scrolls to the heading, the map comes back at the right size
+  await page.click('[data-testid=view-docs]');
+  await page.waitForSelector('[data-testid=apollo-doc] .katex', {timeout: 30_000});
+  assert.equal(await page.locator('.katex-error').count(), 0, 'KaTeX error nodes');
+  await page.evaluate(() => (location.hash = '#doc=primer&h=kpi_ice'));
+  await page.waitForTimeout(800);
+  const heading = await page.evaluate(() => {
+    const h = [...document.querySelectorAll('[data-testid=apollo-doc] h2, h3, h4')].find((e) => e.textContent?.trim() === 'kpi_ice');
+    const pane = document.getElementById('apollo-scroll')!.getBoundingClientRect();
+    const r = h?.getBoundingClientRect();
+    return {found: !!h, inView: !!r && r.top >= pane.top - 1 && r.bottom <= pane.bottom, top: r && r.top - pane.top};
+  });
+  assert(heading.found && heading.inView, `kpi_ice heading not in view: ${JSON.stringify(heading)}`);
+  assert.equal(await page.locator('.katex-error').count(), 0);
+  await page.screenshot({path: `${WEB}test-results/real-docs-kpi_ice.png`});
+  await page.evaluate(() => (location.hash = '#doc=modules'));
+  await page.waitForSelector('[data-testid^=module-]');
+  await page.screenshot({path: `${WEB}test-results/real-modules.png`});
+  await page.click('[data-testid=view-map]');
+  await page.waitForTimeout(1500);
+  const back = await frame();
+  assert(back.distinctColours > 100 && back.drawnFraction > 0.3, `map blank after returning: ${JSON.stringify(back)}`);
+  const sizes = await page.evaluate(() => {
+    const c = document.querySelector('[data-testid=map] canvas') as HTMLCanvasElement;
+    const m = document.querySelector('[data-testid=map]')!.getBoundingClientRect();
+    return {canvasW: c.getBoundingClientRect().width, canvasH: c.getBoundingClientRect().height, mapW: m.width, mapH: m.height, buffer: c.width};
+  });
+  assert(Math.abs(sizes.canvasW - sizes.mapW) < 2 && Math.abs(sizes.canvasH - sizes.mapH) < 2 && sizes.canvasW > 400, `canvas size ${JSON.stringify(sizes)}`);
+  report.mapAfterDocs = {...sizes, ...back};
+
   // 8. error state
   await page.goto(`${URL_BASE}?scenario=nope`);
   await page.waitForSelector('[role=alert]');
-  assert.match((await page.textContent('[role=alert]'))!, /Unknown scenario "nope". Available: fixture/);
+  assert.match((await page.textContent('[role=alert]'))!, /Unknown scenario "nope". Available: south-pole-2027, fixture/);
 
   report.consoleErrors = errors;
   assert.deepEqual(errors, []);
