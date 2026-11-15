@@ -11,15 +11,20 @@ import type {RangeValues} from './rangeProtocol';
 
 /** Map zoom (deck.gl OrthographicView, log2 pixels per metre) from which a patch replaces the overview cells. */
 export const DETAIL_MIN_ZOOM = -7;
+/** Zoom of the "Zoom to detail" button: the 50 km patch fills most of the map. */
+export const DETAIL_FLY_ZOOM = -6.5;
+/** Zoom-out margin before the patch is dropped again (stops flicker at the threshold). */
+const DETAIL_HYSTERESIS = 0.5;
 
 /** The patch to show: the first one containing the view centre (projection metres) once zoomed in far enough. */
 export function chooseDetail(
   zoom: number,
   centre_m: [number, number],
   patches: Pick<GridInfo, 'id' | 'bounds_m'>[],
+  current: string | null = null,
   minZoom = DETAIL_MIN_ZOOM,
 ): string | null {
-  if (zoom < minZoom) return null;
+  if (zoom < minZoom - (current ? DETAIL_HYSTERESIS : 0)) return null;
   const [x, y] = centre_m;
   const hit = patches.find((p) => p.bounds_m && x >= p.bounds_m[0] && x <= p.bounds_m[2] && y >= p.bounds_m[1] && y <= p.bounds_m[3]);
   return hit?.id ?? null;
@@ -36,11 +41,6 @@ export function hiddenRows(scenario: Scenario, detail: string | null): number[] 
 }
 
 const MASKED = NULLABLE_METRIC_COLUMNS as readonly MetricColumn[];
-
-/** Rows to blank in the current view: hidden ones, except `keep` rows (selected and pinned cells stay readable). */
-export function maskedRows(scenario: Scenario, detail: string | null, keep: number[]): number[] {
-  return hiddenRows(scenario, detail).filter((r) => !keep.includes(r));
-}
 
 /** The cells every reader uses: the loaded cells, with the custom-range columns when `range` is set, and `rows` blanked (null). */
 export function viewCells(scenario: Scenario, range: RangeValues | null, rows: number[]): Cells {
@@ -65,4 +65,11 @@ export function maskKpis(kpis: Kpis, rows: number[]): Kpis {
 export function patchLabel(grid: Pick<GridInfo, 'id' | 'name'>): string {
   const t = (grid.name ?? grid.id).replaceAll('_', ' ');
   return t.charAt(0).toUpperCase() + t.slice(1);
+}
+
+/** The loaded grid that holds `row` of `Scenario.cells`. */
+export function gridOfRow(scenario: Scenario, row: number): Scenario['grids'][number] {
+  let i = scenario.grids.length - 1;
+  while (i > 0 && scenario.grids[i].rowStart > row) i--;
+  return scenario.grids[i];
 }

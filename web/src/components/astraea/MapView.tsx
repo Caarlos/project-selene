@@ -4,13 +4,13 @@ import {COORDINATE_SYSTEM, OrthographicView, type PickingInfo} from '@deck.gl/co
 import {BitmapLayer, PathLayer, PolygonLayer, TextLayer} from '@deck.gl/layers';
 import DeckGL, {type DeckGLRef} from '@deck.gl/react';
 import {useEffect, useMemo, useRef, useState} from 'react';
-import {chooseDetail, hiddenRows, patchLabel} from '../../services/detail';
+import {chooseDetail, DETAIL_FLY_ZOOM, hiddenRows, patchLabel} from '../../services/detail';
 import {rangeMetrics} from '../../services/ephemeris';
 import {ICE_LINK_RGBA, PINNED_RGBA, SELECTED_RGBA, writeCellColour, type Rgba} from '../../services/colour';
 import type {Scenario} from '../../services/loader';
 import {formatMetric, METRIC_INFO} from '../../services/metrics';
 import {projectStereo_m} from '../../services/projection';
-import {useStore} from '../../services/store';
+import {kpisFor, useStore} from '../../services/store';
 
 const CARTESIAN = COORDINATE_SYSTEM.CARTESIAN;
 const VIEW = new OrthographicView({flipY: false}); // +y up, as in the projection formula
@@ -73,13 +73,14 @@ export default function MapView({scenario}: {scenario: Scenario}) {
   const colourVersion = useStore((s) => s.colourVersion);
   const select = useStore((s) => s.select);
   const focus = useStore((s) => s.focus);
-  const nearestIce = useStore((s) => s.kpis?.nearestIce);
+  const nearestIce = useStore((s) => (s.selected === null ? undefined : kpisFor(s, s.selected)?.nearestIce));
   const detail = useStore((s) => s.detail);
   const detailError = useStore((s) => s.detailError);
   const showDetail = useStore((s) => s.showDetail);
   const deckRef = useRef<DeckGLRef>(null);
   const [fitZoom, setFitZoom] = useState<number | null>(null);
   const [zoom, setZoom] = useState<number | null>(null);
+  const [fly, setFly] = useState<{target: [number, number]; zoom: number; focusSeq: number} | null>(null);
   const [renderError, setRenderError] = useState<string | null>(null);
 
   const {manifest, polygons_m} = scenario;
@@ -88,15 +89,18 @@ export default function MapView({scenario}: {scenario: Scenario}) {
   // A new `focus` replaces the initial view state, which makes deck.gl move the camera to the cell (same zoom, at least 1 in).
   const initialViewState = useMemo(() => {
     const fit = fitZoom ?? -10;
+    if (fly && fly.focusSeq === (focus?.seq ?? 0)) { // a later `focus` makes the fly-to stale
+      return {target: [...fly.target, 0] as [number, number, number], zoom: fly.zoom, minZoom: fit - 1, maxZoom: -3};
+    }
     const c = focus ? projectStereo_m(scenario.cells.lat[focus.index], scenario.cells.lon[focus.index]) : [0, 0];
     const z = focus ? Math.min(-3, Math.max(zoom ?? fit, fit + 1)) : fit;
     return {target: [c[0], c[1], 0] as [number, number, number], zoom: z, minZoom: fit - 1, maxZoom: -3};
     // eslint-disable-next-line react-hooks/exhaustive-deps -- the camera moves only on a new focus, not on every zoom
-  }, [fitZoom, focus, scenario.manifest]);
+  }, [fitZoom, focus, fly, scenario.manifest]);
   // Swap to a detail patch when zoomed in on it (also after the camera was moved by `focus`).
   useEffect(() => {
     const {zoom: z, target} = initialViewState;
-    if (fitZoom !== null) void showDetail(chooseDetail(z, [target[0], target[1]], scenario.patches));
+    if (fitZoom !== null) void showDetail(chooseDetail(z, [target[0], target[1]], scenario.patches, useStore.getState().detail));
   }, [initialViewState, fitZoom, scenario.patches, showDetail]);
   // Rows drawn: all overview rows except those under the shown patch, plus the shown patch's rows.
   const shownRows = useMemo(() => {
@@ -234,7 +238,7 @@ export default function MapView({scenario}: {scenario: Scenario}) {
           if (typeof viewState.zoom === 'number') {
             setZoom(viewState.zoom);
             const t = (viewState as {target: number[]}).target;
-            void showDetail(chooseDetail(viewState.zoom, [t[0], t[1]], scenario.patches));
+            void showDetail(chooseDetail(viewState.zoom, [t[0], t[1]], scenario.patches, useStore.getState().detail));
           }
         }}
         onError={(e) => setRenderError(e.message)}
@@ -250,9 +254,23 @@ export default function MapView({scenario}: {scenario: Scenario}) {
           </div>
         </div>
       )}
-      <p className="pointer-events-none absolute top-3 right-3 rounded bg-slate-900/80 px-2 py-1 text-xs text-slate-100" data-testid="grid-note">
-        {gridNote}
-      </p>
+      <div className="absolute top-3 right-3 flex items-center gap-2 rounded bg-slate-900/80 px-2 py-1 text-xs text-slate-100">
+        <span data-testid="grid-note">{gridNote}</span>
+        {scenario.patches.length > 0 && fitZoom !== null && (
+          <button
+            type="button"
+            data-testid="detail-fly"
+            className="rounded bg-slate-700 px-2 py-0.5 hover:bg-slate-600"
+            onClick={() => {
+              const b = scenario.patches[0].bounds_m!;
+              const target: [number, number] = detail ? [0, 0] : [(b[0] + b[2]) / 2, (b[1] + b[3]) / 2];
+              setFly({target, zoom: detail ? fitZoom : DETAIL_FLY_ZOOM, focusSeq: focus?.seq ?? 0});
+            }}
+          >
+            {detail ? 'Back to overview' : 'Zoom to detail'}
+          </button>
+        )}
+      </div>
       {renderError && (
         <p role="alert" className="absolute inset-x-3 top-3 rounded bg-red-900/90 px-3 py-2 text-sm text-red-100">
           Map rendering problem: {renderError}

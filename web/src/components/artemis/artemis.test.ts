@@ -1,4 +1,6 @@
 import {describe, expect, it} from 'vitest';
+import {gridOfRow} from '../../services/detail';
+import type {Scenario} from '../../services/loader';
 import {projectStereo_m, unprojectStereo_deg} from '../../services/projection';
 import {steepestSlopeAlong} from './baseToIce';
 import {batteryEstimate} from './battery';
@@ -67,5 +69,16 @@ describe('bestColumns', () => {
     expect(dir('slope_p95_deg')).toBe('lower');
     expect(dir('safe_frac')).toBe('higher');
     expect(dir('elev_m')).toBeNull();
+  });
+});
+
+describe('base-to-ice sampling resolution', () => {
+  it('uses the resolution of the grid that holds the cell: res 5 for overview rows, res 7 for patch rows', () => {
+    const grids = [
+      {grid: {id: 'cap', res: 5}, rowStart: 0, covered: []},
+      {grid: {id: 'p', res: 7}, rowStart: 10, covered: []},
+    ];
+    const scenario = {grids} as unknown as Scenario;
+    expect([0, 9, 10, 25].map((r) => gridOfRow(scenario, r).grid.res)).toEqual([5, 5, 7, 7]);
   });
 });

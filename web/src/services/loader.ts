@@ -200,6 +200,8 @@ export function withPatch(scenario: Scenario, grid: GridInfo, patch: Cells): Sce
   if (!grid.bounds_m) throw new Error(`grid ${grid.id} has no bounds_m: not a detail patch`);
   if (scenario.grids.some((g) => g.grid.id === grid.id)) return scenario;
   const [x0, y0, x1, y1] = grid.bounds_m;
+  // An overview cell counts as covered when its centre is inside the square (the patch's own selection rule), so a thin
+  // band of partly overlapping overview hexagons remains at the patch edge.
   const covered: number[] = [];
   for (let i = 0; i < scenario.grid.n_cells; i++) {
     const [x, y] = projectStereo_m(scenario.cells.lat[i], scenario.cells.lon[i]);

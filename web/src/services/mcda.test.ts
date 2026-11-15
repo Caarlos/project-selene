@@ -274,7 +274,7 @@ describe('editable reference values and basis (W8)', () => {
   });
 
   it('settings changed during a custom range apply after clearCustomRange', () => {
-    useStore.setState({scenario: {grid: {n_cells: 2}, cells, grids: []} as never, cells, kpis: null, baselineKpis: null, customRange: {startIndex: 0, endIndex: 1}});
+    useStore.setState({scenario: {grid: {n_cells: 2}, cells, grids: []} as never, cells, kpis: null, customRange: {startIndex: 0, endIndex: 1}});
     useStore.setState({mcdaScore: new Float32Array(2), excluded: new Uint8Array(2), score: new Float32Array(2)});
     useStore.getState().setKpiSettings({iceDistanceScale_km: 20, sunCommsBasis: 'mean'});
     useStore.getState().clearCustomRange();

@@ -3,16 +3,18 @@ import {latLngToCell} from 'h3-js';
 import {useMemo, useState} from 'react';
 import type {Scenario} from '../../services/loader';
 import {surfaceDistance_m} from '../../services/projection';
-import {useStore} from '../../services/store';
+import {kpisFor, useStore} from '../../services/store';
 import DocLink from '../astraea/DocLink';
+import {gridOfRow} from '../../services/detail';
 import {steepestSlopeAlong} from './baseToIce';
 import {batteryEstimate} from './battery';
 
 function BaseToIce({scenario, row}: {scenario: Scenario; row: number}) {
-  const kpis = useStore((s) => s.kpis);
+  const kpis = useStore((s) => kpisFor(s, row));
   const iceIndexMin = useStore((s) => s.kpiSettings.iceIndexMin);
   const focusCell = useStore((s) => s.focusCell);
-  const {cells, grid} = scenario;
+  const {cells} = scenario;
+  const res = gridOfRow(scenario, row).grid.res; // a patch cell is sampled at the patch resolution
   const rowOf = useMemo(() => new Map(cells.h3.map((id, i) => [id, i])), [cells]);
   const ice = kpis ? kpis.nearestIce[row] : -1;
   const link = useMemo(() => {
@@ -21,9 +23,9 @@ function BaseToIce({scenario, row}: {scenario: Scenario; row: number}) {
     const b = {lat_deg: cells.lat[ice], lon_deg: cells.lon[ice]};
     return {
       distance_km: surfaceDistance_m(a.lat_deg, a.lon_deg, b.lat_deg, b.lon_deg) / 1000,
-      slope: steepestSlopeAlong(a, b, (lat, lon) => rowOf.get(latLngToCell(lat, lon, grid.res)), cells.slope_mean_deg),
+      slope: steepestSlopeAlong(a, b, (lat, lon) => rowOf.get(latLngToCell(lat, lon, res)), cells.slope_mean_deg),
     };
-  }, [ice, row, cells, grid.res, rowOf]);
+  }, [ice, row, cells, res, rowOf]);
 
   return (
     <section className="space-y-1" data-testid="base-to-ice">
@@ -94,7 +96,7 @@ function Battery({scenario, row}: {scenario: Scenario; row: number}) {
   const [power_kW, setPower] = useState(1);
   const [energy_Wh_kg, setEnergy] = useState(200);
   const [dod, setDod] = useState(0.8);
-  const cells = useStore((s) => s.cells) ?? scenario.cells; // custom-range columns when a range is active
+  const cells = useStore((s) => s.fullCells) ?? scenario.cells; // custom-range columns when a range is active
   const t = cells.dark_max_h_best[row];
   const est = batteryEstimate(power_kW, t, energy_Wh_kg, dod);
   return (

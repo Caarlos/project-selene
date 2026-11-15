@@ -138,6 +138,15 @@ def _resample_360(h: np.ndarray, az_step_deg: float) -> np.ndarray:
     return np.stack([np.interp(np.arange(360), xp, row) for row in ext]).astype(np.float32)
 
 
+def _time_entry(t_start, t_end, table) -> dict:
+    return {"start": _z(t_start), "end": _z(t_end), "step_s": table.step_s}
+
+
+def _ephemeris_entry(table) -> dict:
+    return {"file": "../" + default_table_path().name, "t0": _z(table.t0),
+            "step_s": table.step_s, "n": table.n}
+
+
 def _update_index(data_dir: Path, scenario_id: str) -> None:
     path = data_dir / "index.json"
     index = json.loads(path.read_text()) if path.exists() else []
@@ -165,6 +174,20 @@ def build(args: argparse.Namespace) -> Path:
             raise ValueError("end-date must be after start-date")
         tab = table.slice(i0, i1)
         print(f"  {tab.n} steps of {tab.step_h} h", flush=True)
+        if base:  # fail before the horizon trace, not after it
+            same = {"synthetic": bool(args.synthetic), "time": _time_entry(t_start, t_end, table),
+                    "ephemeris": _ephemeris_entry(table)}
+            same.update({f"params.{k}": v for k, v in (
+                ("az_step_deg", args.az_step), ("range_km", args.range_km),
+                ("observer_height_m", args.observer_height_m),
+                ("safe_slope_deg", args.safe_slope_deg), ("samples_per_cell", SAMPLES_PER_CELL))})
+            have = {"synthetic": base["synthetic"], "time": base["time"],
+                    "ephemeris": base["ephemeris"],
+                    **{f"params.{k}": v for k, v in base["params"].items()}}
+            bad = [k for k, v in same.items() if have.get(k) != v]
+            if bad:
+                raise ValueError(
+                    f"this build differs from the scenario in {out} in: {', '.join(bad)}")
 
     with stage("dem"):
         if args.synthetic:
@@ -293,7 +316,7 @@ def build(args: argparse.Namespace) -> Path:
             "generated_at": _z(datetime.now(UTC)),
             "region": {"name": "south_pole" if is_cap else args.region,
                        "lat_max": region["lat_max_deg"] if is_cap else float(c_lat.max())},
-            "time": {"start": _z(t_start), "end": _z(t_end), "step_s": table.step_s},
+            "time": _time_entry(t_start, t_end, table),
             "params": {"az_step_deg": args.az_step, "range_km": args.range_km,
                        "observer_height_m": args.observer_height_m,
                        "safe_slope_deg": args.safe_slope_deg, "samples_per_cell": SAMPLES_PER_CELL,
@@ -301,21 +324,17 @@ def build(args: argparse.Namespace) -> Path:
             "sources": sources,
             "projection": {"type": "south_polar_stereographic", "radius_m": 1737400},
             "hillshade": {"file": "hillshade.webp", "bounds_m": bounds},
-            "ephemeris": {"file": "../" + eph_bin.name, "t0": _z(table.t0),
-                          "step_s": table.step_s, "n": table.n},
+            "ephemeris": _ephemeris_entry(table),
             "grids": [grid],
             "notes": notes,
         }
         if base:
-            for k in ("time", "params"):
-                if manifest[k] != base[k]:
-                    raise ValueError(f"{k} of this build differs from the scenario in {out}")
             base["grids"] = [g for g in base["grids"] if g["id"] != grid_id] + [grid]
             base["notes"] = [x for x in base.get("notes", []) if not x.startswith(f"[{grid_id}]")
                              ] + [f"[{grid_id}] {x}" for x in notes]
             base["sources"] = base["sources"] + [x for x in sources if x not in base["sources"]]
             manifest = base
-        if args.synthetic:
+        if args.synthetic and not base:
             manifest["notes"].insert(0, "Synthetic terrain (analytic sphere + crater + ridge): "
                                         "terrain metrics are not lunar data.")
         (out / "manifest.json").write_text(json.dumps(manifest, indent=2) + "\n")

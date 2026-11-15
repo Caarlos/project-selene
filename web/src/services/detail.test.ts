@@ -1,5 +1,5 @@
 import {describe, expect, it} from 'vitest';
-import {chooseDetail, DETAIL_MIN_ZOOM, hiddenRows, maskedRows, maskKpis, patchLabel, viewCells} from './detail';
+import {chooseDetail, DETAIL_MIN_ZOOM, gridOfRow, hiddenRows, maskKpis, patchLabel, viewCells} from './detail';
 import type {Scenario} from './loader';
 import {NULLABLE_METRIC_COLUMNS, type Cells} from './types';
 
@@ -13,6 +13,9 @@ describe('chooseDetail', () => {
     expect(chooseDetail(-3, [99, 300], patches)).toBeNull(); // centre outside
     expect(chooseDetail(-3, [200, 300], [])).toBeNull();
     expect(chooseDetail(-3, [200, 300], [{id: 'no-bounds'}])).toBeNull();
+    // hysteresis: once shown, the patch stays a little past the threshold
+    expect(chooseDetail(DETAIL_MIN_ZOOM - 0.3, [200, 300], patches, 'p')).toBe('p');
+    expect(chooseDetail(DETAIL_MIN_ZOOM - 0.6, [200, 300], patches, 'p')).toBeNull();
   });
 });
 
@@ -41,9 +44,10 @@ describe('views', () => {
     expect(hiddenRows(scenario, 'p')).toEqual([1]);
     expect(hiddenRows(scenario, null)).toEqual([3, 4]);
   });
-  it('keeps selected and pinned rows readable', () => {
-    expect(maskedRows(scenario, 'p', [1])).toEqual([]);
-    expect(maskedRows(scenario, null, [4])).toEqual([3]);
+  it('finds the grid that holds a row (its resolution decides the base-to-ice sampling)', () => {
+    expect(gridOfRow(scenario, 2).grid.id).toBe('cap');
+    expect(gridOfRow(scenario, 3).grid.id).toBe('p');
+    expect(gridOfRow(scenario, 4).grid.id).toBe('p');
   });
   it('blanks hidden rows, leaves the loaded cells untouched, and returns them as is when nothing is hidden', () => {
     const v = viewCells(scenario, null, [1]);

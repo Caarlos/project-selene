@@ -82,12 +82,28 @@ def test_patch_build_adds_its_grid_and_leaves_the_overview_untouched(built):
     assert manifest["region"]["name"] == "south_pole"
     cells = json.loads((built / "cells_shackleton_ridge.json").read_text())
     assert len(cells["h3"]) == 5
+    assert sum(n.startswith("Synthetic terrain") for n in manifest["notes"]) == 1
     assert (built / "horizons_shackleton_ridge.bin").stat().st_size == 5 * 360 * 2
 
 
 def test_patch_build_rejects_a_scenario_with_other_dates(built):
-    with pytest.raises(ValueError, match="time of this build differs"):
+    with pytest.raises(ValueError, match="differs from the scenario .* in: time"):
         selene_build.main(["--region", "shackleton_ridge", "--scenario-id", "demo",
                            "--synthetic", "--limit-cells", "5", "--start-date", "2027-04-01",
                            "--end-date", "2027-04-05", "--out", str(built),
                            "--cache-dir", str(built.parent / "cache")])
+
+
+def test_patch_build_fails_fast_on_a_different_scenario(built, monkeypatch):
+    def no_trace(*a, **k):
+        raise AssertionError("the horizon trace started")
+
+    monkeypatch.setattr(selene_build, "trace_cached", no_trace)
+    common = ["--region", "shackleton_ridge", "--scenario-id", "demo", "--limit-cells", "5",
+              "--start-date", "2027-03-01", "--end-date", "2027-03-11", "--out", str(built),
+              "--cache-dir", str(built.parent / "cache")]
+    for flag, value in (("--az-step", "2"), ("--observer-height-m", "3")):
+        with pytest.raises(ValueError, match="differs from the scenario"):
+            selene_build.main([*common, "--synthetic", flag, value])
+    with pytest.raises(ValueError, match="in: synthetic"):  # a real patch on a synthetic scenario
+        selene_build.main(common)

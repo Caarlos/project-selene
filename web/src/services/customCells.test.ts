@@ -60,7 +60,6 @@ describe('custom-range override read path', () => {
       scenario: {cells: base, grids: []} as never,
       cells: eff,
       kpis: computeKpis(eff),
-      baselineKpis: kpis,
       customRange: {startIndex: 0, endIndex: 24},
       customMissing: 1,
       mcdaScore: new Float32Array(3),

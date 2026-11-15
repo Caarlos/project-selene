@@ -368,25 +368,9 @@ try {
   await page.screenshot({path: `${WEB}test-results/real-selected.png`});
 
   // 7c-2. detail patch (W6): zoom into the Shackleton patch, the resolution-7 cells replace the overview there
-  const centre = await page.evaluate(() => {
-    const {scenario} = window.__selene.store.getState();
-    const [x0, y0, x1, y1] = scenario.patches[0].bounds_m;
-    return {xy: [(x0 + x1) / 2, (y0 + y1) / 2], cells: scenario.cells, n0: scenario.grid.n_cells};
-  });
   assert.match((await page.textContent('[data-testid=grid-note]'))!, /^Overview, resolution 5, 14,444 cells/);
-  let nearest = 0;
-  let nearestD = Infinity;
-  for (let i = 0; i < centre.n0; i++) {
-    const [x, y] = projectStereo_m(centre.cells.lat[i], centre.cells.lon[i]);
-    const d = Math.hypot(x - centre.xy[0], y - centre.xy[1]);
-    if (d < nearestD) [nearest, nearestD] = [i, d];
-  }
-  await page.evaluate((i) => window.__selene.store.getState().focusCell(i), nearest);
-  await page.mouse.move(rbox.x + rbox.width / 2, rbox.y + rbox.height / 2);
-  for (let i = 0; i < 25 && (await page.evaluate(() => window.__selene.store.getState().detail)) === null; i++) {
-    await page.mouse.wheel(0, -240);
-    await page.waitForTimeout(600);
-  }
+  assert.equal(await page.textContent('[data-testid=detail-fly]'), 'Zoom to detail');
+  await page.click('[data-testid=detail-fly]');
   await page.waitForFunction(() => window.__selene.store.getState().detail === 'shackleton_ridge', null, {timeout: 60_000});
   await ready(page);
   assert.equal(await page.textContent('[data-testid=grid-note]'), 'Detail: Shackleton ridge, resolution 7, 6,024 cells');
@@ -451,11 +435,9 @@ try {
   });
   report.patchSliderTickMs = patchTimings.map((t) => +t.toFixed(1));
   for (const t of patchTimings) assert(t < RECOLOUR_BUDGET_MS, `slider tick with the patch shown: ${t} ms`);
-  // zoom back out: the overview returns
-  for (let i = 0; i < 25 && (await page.evaluate(() => window.__selene.store.getState().detail)) !== null; i++) {
-    await page.mouse.wheel(0, 240);
-    await page.waitForTimeout(600);
-  }
+  // back to the overview with the button
+  assert.equal(await page.textContent('[data-testid=detail-fly]'), 'Back to overview');
+  await page.click('[data-testid=detail-fly]');
   await page.waitForFunction(() => window.__selene.store.getState().detail === null, null, {timeout: 60_000});
   assert.match((await page.textContent('[data-testid=grid-note]'))!, /^Overview, resolution 5, 14,444 cells/);
   report.patch = {clicked: patchId, drawn};

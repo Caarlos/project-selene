@@ -5,7 +5,7 @@ import {MISSION_PRESETS} from '../components/artemis/presets';
 import {DEFAULT_KPI_SETTINGS, FILTER_CONFIG, FILTER_IDS, KPI_IDS, type FilterId, type KpiId, type KpiSettings} from './kpiConfig';
 import {cellPoint} from '../components/astraea/useCellSky';
 import {countMissing} from './customCells';
-import {maskedRows, maskKpis, viewCells} from './detail';
+import {hiddenRows, maskKpis, viewCells} from './detail';
 import {loadEphemeris, loadHorizons, loadPatch, loadScenario, type Scenario} from './loader';
 import {computeKpis, effectiveSettings, filtersInto, scoreInto, type FilterState, type Kpis, type ScoreHint, type Weights} from './mcda';
 import type {ColourField} from './metrics';
@@ -62,6 +62,7 @@ export type CustomStatus =
 
 let job: RangeJob | null = null; // the running custom-range computation, if any
 let wantedDetail: string | null = null; // the patch the map last asked for
+let requestedRange: {startIndex: number; endIndex: number} | null = null; // custom range being computed, not yet applied
 let jobSeq = 0; // bumped by every apply / cancel / clear, so a stale async continuation can tell
 
 export interface SeleneState {
@@ -98,8 +99,12 @@ export interface SeleneState {
   focus: {index: number; seq: number} | null;
   /** Custom date range as ephemeris table row indices [startIndex, endIndex); null = the baseline scenario range. */
   customRange: {startIndex: number; endIndex: number} | null;
-  /** The cells every reader uses: `scenario.cells` with the custom-range columns when `customRange` is set and the rows of the grid not shown blanked (null). */
+  /** The cells KPIs, filters, ranking and the legend use: `scenario.cells` with the custom-range columns when `customRange` is set and ALL rows of the grid not shown blanked (null). */
   cells: Cells | null;
+  /** Same without blanking: what the inspector, comparator and mission tools read, so a selected or pinned hidden cell stays readable. */
+  fullCells: Cells | null;
+  /** KPIs and score of selected / pinned cells that are hidden (computed on `fullCells`, for display only, never ranked); null when none. */
+  shadow: {kpis: Kpis; score: Float32Array; rows: Set<number>} | null;
   /** Values of the custom range for every row of `scenario.cells`; null = baseline. */
   customValues: RangeValues | null;
   /** Id of the detail patch shown instead of the overview cells it covers, or null (overview only). */
@@ -107,7 +112,6 @@ export interface SeleneState {
   /** Set when a detail patch could not be loaded. */
   detailError: string | null;
   /** KPIs of the loaded baseline, kept so "Baseline" restores instantly. */
-  baselineKpis: Kpis | null;
   customStatus: CustomStatus;
   /** Cells that have no horizon row, hence null for the custom range; 0 when no custom range is active. */
   customMissing: number;
@@ -148,13 +152,37 @@ export interface SeleneState {
 
 /** Rebuilds `cells` and the KPIs for the shown grid, custom range and reference values, then rescores (in place). */
 function refreshView(): void {
-  const {scenario, customValues, customRange, detail, kpiSettings, selected, pinned} = useStore.getState();
+  const {scenario, customValues, customRange, detail, kpiSettings} = useStore.getState();
   if (!scenario) return;
-  const rows = maskedRows(scenario, detail, selected === null ? pinned : [...pinned, selected]);
+  const rows = hiddenRows(scenario, detail);
   const cells = viewCells(scenario, customValues, rows);
   const kpis = maskKpis(computeKpis(cells, effectiveSettings(kpiSettings, customRange !== null)), rows);
-  useStore.setState({cells, kpis, baselineKpis: customRange ? null : kpis});
+  useStore.setState({cells, fullCells: viewCells(scenario, customValues, []), kpis, shadow: null});
+  updateShadow();
   useStore.getState().rescore();
+}
+
+/** (Re)computes the display-only KPIs of the selected and pinned cells that are hidden in the current view. */
+function updateShadow(): void {
+  const {scenario, fullCells, detail, selected, pinned, shadow, customRange, kpiSettings, weights} = useStore.getState();
+  if (!scenario || !fullCells) return;
+  const hidden = new Set(hiddenRows(scenario, detail));
+  const rows = new Set([...pinned, ...(selected === null ? [] : [selected])].filter((r) => hidden.has(r)));
+  if (rows.size === 0) return void (shadow && useStore.setState({shadow: null}));
+  const kpis = shadow?.kpis ?? computeKpis(fullCells, effectiveSettings(kpiSettings, customRange !== null));
+  const score = shadow?.score ?? new Float32Array(fullCells.h3.length);
+  scoreInto(kpis, weights, score);
+  useStore.setState({shadow: {kpis, score, rows}});
+}
+
+/** KPIs to read for `row`: the display-only ones when the row is hidden in the current view. */
+export function kpisFor(s: Pick<SeleneState, 'kpis' | 'shadow'>, row: number): Kpis | null {
+  return s.shadow?.rows.has(row) ? s.shadow.kpis : s.kpis;
+}
+
+/** MCDA score to read for `row` (see `kpisFor`). */
+export function scoreFor(s: Pick<SeleneState, 'mcdaScore' | 'shadow'>, row: number): number {
+  return s.shadow?.rows.has(row) ? s.shadow.score[row] : s.mcdaScore[row];
 }
 
 export const useStore = create<SeleneState>()((set, get) => ({
@@ -182,7 +210,8 @@ export const useStore = create<SeleneState>()((set, get) => ({
   customValues: null,
   detail: null,
   detailError: null,
-  baselineKpis: null,
+  fullCells: null,
+  shadow: null,
   customStatus: {phase: 'idle'},
   customMissing: 0,
 
@@ -195,13 +224,15 @@ export const useStore = create<SeleneState>()((set, get) => ({
       job?.cancel();
       job = null;
       wantedDetail = null;
+      requestedRange = null;
       const kpis = computeKpis(scenario.cells, effectiveSettings(get().kpiSettings, false));
       set({
         cells: scenario.cells,
         customValues: null,
         detail: null,
         detailError: null,
-        baselineKpis: kpis,
+        fullCells: scenario.cells,
+        shadow: null,
         customStatus: {phase: 'idle'},
         customMissing: 0,
         scenario,
@@ -231,7 +262,7 @@ export const useStore = create<SeleneState>()((set, get) => ({
         const next = await loadPatch(scenario, id);
         if (wantedDetail !== id || get().scenario !== scenario) return; // the view moved on, or another scenario was loaded
         const n = next.cells.h3.length;
-        const range = get().customRange;
+        const range = requestedRange ?? get().customRange; // a range still computing wins over the last finished one
         jobSeq++;
         job?.cancel();
         job = null;
@@ -255,6 +286,7 @@ export const useStore = create<SeleneState>()((set, get) => ({
     if (!scenario) return;
     job?.cancel();
     const seq = ++jobSeq;
+    requestedRange = {startIndex, endIndex};
     set({customStatus: {phase: 'computing', progress: 0}});
     try {
       const [horizons, eph] = await Promise.all([loadHorizons(scenario), loadEphemeris(scenario)]);
@@ -277,16 +309,19 @@ export const useStore = create<SeleneState>()((set, get) => ({
       if (job !== mine) return; // cancelled or replaced
       job = null;
       if (values === null) return;
+      requestedRange = null;
       set({customRange: {startIndex, endIndex}, customValues: values, customMissing: countMissing(values), customStatus: {phase: 'idle'}});
       refreshView();
     } catch (e) {
       if (seq !== jobSeq) return;
       job = null;
+      requestedRange = null;
       set({customStatus: {phase: 'error', message: e instanceof Error ? e.message : String(e)}});
     }
   },
 
   cancelCustomRange() {
+    requestedRange = null;
     jobSeq++;
     job?.cancel();
     job = null;
@@ -294,6 +329,7 @@ export const useStore = create<SeleneState>()((set, get) => ({
   },
 
   clearCustomRange() {
+    requestedRange = null;
     jobSeq++;
     job?.cancel();
     job = null;
@@ -301,13 +337,17 @@ export const useStore = create<SeleneState>()((set, get) => ({
     refreshView();
   },
 
-  select: (index) => set({selected: index}),
+  select(index) {
+    set({selected: index});
+    updateShadow();
+  },
 
   togglePin(index) {
     const {pinned} = get();
     if (pinned.includes(index)) set({pinned: pinned.filter((i) => i !== index)});
     else if (pinned.length >= MAX_PINNED) return false;
     else set({pinned: [...pinned, index]});
+    updateShadow();
     return true;
   },
 
@@ -358,6 +398,7 @@ export const useStore = create<SeleneState>()((set, get) => ({
 
   focusCell(index) {
     set({selected: index, focus: {index, seq: (get().focus?.seq ?? 0) + 1}});
+    updateShadow();
   },
 
   rescore() {
@@ -365,6 +406,7 @@ export const useStore = create<SeleneState>()((set, get) => ({
     if (!scenario || !kpis) return;
     const cells = get().cells ?? scenario.cells;
     const scoreHint = scoreInto(kpis, weights, mcdaScore);
+    updateShadow(); // after a weight move the display scores of hidden selected cells follow
     const excludedCount = filtersInto(cells, filters, excluded);
     set({scoreHint, excludedCount});
     get().recolour();
