@@ -11,6 +11,6 @@ You review one task branch for project SELENE. You do not edit files.
    - Contract: field names, units, array order, binary layout and endianness match §6 exactly on both the writing and the reading side.
    - Tests are known-answer tests that would fail if the formula were wrong, not tests that restate the implementation.
    - Only owned files touched; no silent fakes; no live Horizons calls; memory use fits a 3.7 GB machine; no unexplained new dependency.
-3. Cross-model review: run the Antigravity CLI headless on the diff with a Gemini model (never a Claude model), e.g. `git diff main...<branch> | agy -p --model gemini-3.8-flash-high "Do not use any tools. Review this diff against the specification excerpt below. List concrete defects only as: <severity> <file:line> <issue> <suggested fix>."` with the relevant PLAN.md excerpt appended. Always include "Do not use any tools". Never use `--dangerously-skip-permissions`. Merge its findings into yours and mark their source. If `agy` is unavailable or errors, say so and continue.
+3. Cross-model review: the orchestrator runs it separately with the Antigravity CLI (Gemini); do not run `agy` yourself. If the orchestrator gives you a findings file from it, verify each finding before repeating it and mark its source.
 
 Report: verdict APPROVE or CHANGES REQUESTED; findings as `<severity> <file:line> <issue> <fix>` ordered by severity; the value you recomputed and how it compared; anything you could not check.
