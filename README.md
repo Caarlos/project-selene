@@ -78,27 +78,92 @@ As specified in `PLAN.md` Section 14, the following capabilities are planned for
 * [HUMAN_ACTION.md](HUMAN_ACTION.md): Checklist of actions reserved for the human project owner and the record of design decisions taken during development.
 * [WARNING.md](WARNING.md): Toolchain security scans, dependency audits, and vulnerability mitigation records.
 
-## Quick start
+## Running the application
 
-Needs Python 3.12+, Node 24.22.3 (`.nvmrc`) and pnpm 12.18.0.
+The web app is a static site. All the data it needs (the real `south-pole-2027` scenario and a synthetic `fixture` scenario) is already committed under `web/public/data/`, so you do **not** need Python or the NASA downloads just to look at it.
+
+### 1. What you need
+
+* Node.js 24.22.3 (the version is pinned in `.nvmrc`). pnpm 12.18.0 comes with it through `corepack`.
+* A browser with WebGL (any current Chrome, Edge or Firefox).
+
+### 2. Start it
+
+Open a terminal in the repository folder (in VS Code: *Terminal → New Terminal*) and run these lines one at a time:
 
 ```sh
-# pipeline
+nvm use                                          # switches this terminal to Node 24.22.3
+node -v                                          # must print v24.22.3
+corepack pnpm --dir web install --frozen-lockfile   # first time only; installs the libraries
+corepack pnpm --dir web dev                      # starts the app
+```
+
+The last command keeps running and prints `Local: http://127.0.0.1:5173/`. Leave that terminal open.
+
+### 3. Open it
+
+* **Working on the same computer:** open <http://127.0.0.1:5173/> in your browser.
+* **Working on a remote server through VS Code (Remote-SSH):** the app only listens on the server itself, on purpose. VS Code forwards the port for you: open the *Ports* panel (next to *Terminal*), check that port `5173` is listed (use *Forward a Port* and type `5173` if it is not), then click the globe icon on that row or open <http://localhost:5173/> on your own computer.
+
+The first load downloads about 13 MB of data and takes a few seconds. The header shows the scenario name and `14,444` cells when it is ready.
+
+### 4. Choose the scenario
+
+| Address | What it shows |
+|---|---|
+| `http://localhost:5173/` | Real NASA data, whole of 2027 (`south-pole-2027`, the default) |
+| `http://localhost:5173/?scenario=fixture` | Synthetic terrain used for tests; not real, labelled as synthetic |
+
+### 5. Stop it
+
+Click on the terminal that is running the app and press `Ctrl + C`.
+
+### If something goes wrong
+
+| Symptom | Cause and fix |
+|---|---|
+| `nvm: command not found` or `node -v` prints another version | Run `export PATH=$HOME/.nvm/versions/node/v24.22.3/bin:$PATH` in that terminal, then repeat step 2. |
+| `Port 5173 is already in use` | The app is already running in another terminal. Use that one, or stop it with `Ctrl + C` first. |
+| The page does not open from a remote server | The port is not forwarded; see step 3. |
+| "Could not load scenario data" | The message names the missing file. Check that `web/public/data/` is complete (`git status` should show no deleted files). |
+| Grey page with panels but no map | WebGL is disabled in the browser. Try another browser or enable hardware acceleration. |
+
+### Checking the production build (optional)
+
+This is the version that would be uploaded to a static host:
+
+```sh
+corepack pnpm --dir web build      # writes web/dist/
+corepack pnpm --dir web preview    # serves it at http://127.0.0.1:4173/
+```
+
+## Developing
+
+Needs Python 3.12+ as well as the Node setup above.
+
+```sh
+# pipeline: install, check, test
 python3 -m venv .venv
 .venv/bin/python -m pip install -U pip
 .venv/bin/python -m pip install -r requirements.lock -e '.[dev]'
 .venv/bin/ruff check .
 .venv/bin/pytest
 
-# placeholder scenario for the web app (synthetic; already committed)
-.venv/bin/python -m pipeline.fixture
-.venv/bin/python -m pipeline.schema.validate web/public/data/fixture
-
-# web app
-pnpm --dir web install --frozen-lockfile
-pnpm --dir web dev          # http://127.0.0.1:5173
-pnpm --dir web typecheck
-pnpm --dir web lint
-pnpm --dir web test
-pnpm --dir web build
+# web app: checks
+corepack pnpm --dir web typecheck
+corepack pnpm --dir web lint
+corepack pnpm --dir web test
 ```
+
+### Rebuilding the data (optional, slow)
+
+Only needed to change the scenario (dates, region, parameters). The NASA inputs are about 400 MB and are not in the repository.
+
+```sh
+.venv/bin/python -m pipeline.fetch_data --download              # NASA files into data/raw/
+.venv/bin/python -m pipeline.selene_build --scenario-id south-pole-2027   # about 24 min on 2 cores
+.venv/bin/python -m pipeline.validation_report                  # comparison with NASA maps
+.venv/bin/python -m pipeline.fixture                            # regenerates the synthetic scenario
+```
+
+`python -m pipeline.selene_build --help` lists every option. Each build is checked against the data contract and added to `web/public/data/index.json`; the first entry of that file is the scenario the app opens by default.
