@@ -28,7 +28,7 @@ SELENE separates heavy computational physics from lightweight, responsive user e
 
 ## What the Demonstrator Is Designed to Show
 
-The list below is the designed feature set. Build status and priorities are in PLAN.md section 12; some items may not be finished in the first version.
+Everything in the list below is built and covered by the automated checks, with the limits stated in each item. Task history is in PLAN.md section 12.
 
 * **Interactive Polar Map:** A flat south-polar stereographic projection (deck.gl) centered on 90°S over LOLA shaded relief, rendering 14,444 H3 resolution-5 hexagonal cells across 80°S to 90°S without polar singularities or antimeridian seam artifacts.
 * **Real-Time MCDA Engine:** Reactive weight sliders for five core criteria (sunlight, Earth communications, safe terrain, ice proximity, and topographic protection) along with hard threshold filters (slope limit, maximum dark hours, minimum Earth visibility) that dynamically re-score and recolor all 14,444 cells in under 100 milliseconds.
@@ -40,7 +40,9 @@ The list below is the designed feature set. Build status and priorities are in P
 * **Traverse and Logistics Planning:** Automatic calculation of geodesic surface distance and steepest intervening slope from any selected base site to the nearest water-ice deposit (`ice_index` >= 0.2), together with indicative battery storage sizing based on worst-case continuous darkness hours.
 * **A/B Candidate Comparator:** Multi-site comparison tool allowing planners to pin up to three candidate cells side-by-side to evaluate competing physical metrics and MCDA scores.
 * **Custom Date Range Simulation:** Interactive date picker powered by a background Web Worker that re-evaluates solar disc illumination and Earth line-of-sight against stored cell horizons for any timeline between 2026 and 2036, synchronized with real-time Deep Space Network (DSN) ground station visibility timelines (Madrid, Goldstone, Canberra).
-* **High-Resolution Detail Patches:** Seamless zoom-level switching from regional overview (H3 resolution 5) to fine-scale resolution 7 (0.38 km² cells, ~380 m edge length) over high-priority exploration targets: Shackleton crater ridge, Malapert massif, and Cabeus crater floor.
+* **High-Resolution Detail Patches:** Seamless zoom-level switching from regional overview (H3 resolution 5) to fine-scale resolution 7 (0.38 km² cells, ~380 m edge length) over the Shackleton crater and ridge (6,024 cells, built). Patches for the Malapert massif and the Cabeus crater floor are defined in the plan but not built yet.
+* **Reference Values and Scoring Basis:** The reference values that turn measurements into 0–1 grades (ice distance, ice index threshold, shielding scale) are editable on screen, and the sunlight and Earth-link criteria can use either the best point of each cell or its mean. The 10° safe-slope limit is fixed by the pipeline.
+* **Polar Season Presets:** One-click "polar summer" and "polar winter" months, computed from the Sun's position for the scenario year (for 2027: October and May). The active date range is always shown in the header.
 * **Integrated Knowledge Base:** Direct in-app access to technical documentation, formulas, and NASA data sources via the APOLLO module.
 
 ## Data Credits
