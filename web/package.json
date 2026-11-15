@@ -23,8 +23,13 @@
     "astronomy-engine": "2.1.19",
     "echarts": "6.1.0",
     "h3-js": "4.5.0",
+    "katex": "0.19.1",
     "react": "19.3.1",
     "react-dom": "19.3.1",
+    "react-markdown": "10.1.0",
+    "rehype-katex": "7.0.1",
+    "remark-gfm": "4.0.1",
+    "remark-math": "6.0.0",
     "zustand": "5.1.0"
   },
   "devDependencies": {

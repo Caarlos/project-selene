@@ -1,11 +1,15 @@
-import {useEffect} from 'react';
+import {lazy, Suspense, useEffect, useState} from 'react';
 import CellPanel from './components/astraea/CellPanel';
 import ColourLegend from './components/astraea/ColourLegend';
 import MapView from './components/astraea/MapView';
 import {HardFilters, McdaWeights, TopCells} from './components/astraea/McdaControls';
 import {HeaderDates} from './components/artemis/DateControl';
 import PresetButtons from './components/artemis/PresetButtons';
+import {docHref} from './components/apollo/headings';
 import {useStore} from './services/store';
+
+const ApolloView = lazy(() => import('./components/apollo/ApolloView')); // Markdown + KaTeX stay out of the map bundle
+const isDocHash = () => location.hash.startsWith('#doc=');
 
 export default function App() {
   const status = useStore((s) => s.status);
@@ -17,6 +21,17 @@ export default function App() {
     const dataUrl = new URL(`${import.meta.env.BASE_URL}data/`, document.baseURI).href;
     void load(dataUrl, new URLSearchParams(location.search).get('scenario'));
   }, [load]);
+
+  const [view, setView] = useState<'map' | 'docs'>(isDocHash() ? 'docs' : 'map');
+  useEffect(() => {
+    const on = () => isDocHash() && setView('docs');
+    window.addEventListener('hashchange', on);
+    return () => window.removeEventListener('hashchange', on);
+  }, []);
+  const showMap = () => {
+    history.replaceState(null, '', location.pathname + location.search);
+    setView('map');
+  };
 
   const manifest = scenario?.manifest;
   return (
@@ -41,7 +56,26 @@ export default function App() {
             </span>
           </>
         )}
+        <nav className="ml-auto flex gap-1" aria-label="View">
+          {(['map', 'docs'] as const).map((v) => (
+            <a
+              key={v}
+              data-testid={`view-${v}`}
+              href={v === 'docs' ? docHref('primer') : '#'}
+              aria-current={view === v ? 'page' : undefined}
+              className={`rounded px-3 py-0.5 ${view === v ? 'bg-slate-700 font-semibold' : 'hover:bg-slate-800'}`}
+              onClick={v === 'map' ? (e) => (e.preventDefault(), showMap()) : undefined}
+            >
+              {v === 'map' ? 'Map' : 'Documentation'}
+            </a>
+          ))}
+        </nav>
       </header>
+      {view === 'docs' && (
+        <Suspense fallback={<p className="m-4">Loading documentation…</p>}>
+          <ApolloView />
+        </Suspense>
+      )}
       {status === 'error' && (
         <p role="alert" className="m-4 rounded bg-red-950 p-4 text-red-200">
           Could not load scenario data: {error}
@@ -49,7 +83,7 @@ export default function App() {
       )}
       {status === 'loading' && <p className="m-4">Loading scenario…</p>}
       {status === 'ready' && scenario && (
-        <div className="flex min-h-0 flex-1">
+        <div className={view === 'docs' ? 'hidden' : 'flex min-h-0 flex-1'}>
           <aside className="w-64 shrink-0 space-y-3 overflow-y-auto border-r border-slate-800 p-3">
             <PresetButtons />
             <McdaWeights />

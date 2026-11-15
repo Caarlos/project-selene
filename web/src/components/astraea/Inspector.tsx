@@ -2,6 +2,7 @@
 import {lazy, Suspense} from 'react';
 import {KPI_IDS, kpiDescription} from '../../services/kpiConfig';
 import type {Scenario} from '../../services/loader';
+import {docHref} from '../apollo/headings';
 import {METRIC_INFO} from '../../services/metrics';
 import {effectiveSettings} from '../../services/mcda';
 import {MAX_PINNED, useStore} from '../../services/store';
@@ -192,6 +193,9 @@ export default function Inspector({scenario}: {scenario: Scenario}) {
                     {baselineOnly && custom && (
                       <span className="ml-1 rounded bg-slate-700 px-1 text-[10px] text-slate-200">baseline only</span>
                     )}
+                    <a href={docHref('primer', id)} title={`Formula and data source of ${id}`} className="ml-1 text-sky-400 hover:underline">
+                      ?
+                    </a>
                   </dt>
                   <dd className="text-right" data-testid={`metric-${id}`}>
                     {show(cells[id][selected], METRIC_INFO[id].unit)}
