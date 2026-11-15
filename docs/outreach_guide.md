@@ -152,3 +152,62 @@ Because no single location maximizes all five criteria, the "best" site depends 
 * **Permanent Base Camp:** A long-term habitat must sustain human life for years. It requires a balanced compromise: a well-lit peak with short darkness periods (minimizing battery storage mass), reasonable proximity to an ice-bearing crater via a traversable slope, consistent Earth visibility, and some natural topographic shielding.
 
 By using Multi-Criteria Decision Analysis (MCDA), Project SELENE enables scientists, mission directors, and the public to interactively adjust these weights and observe how the optimal landing zones shift across the lunar landscape. SELENE turns the overwhelming complexity of planetary astrodynamics into a clear, transparent, and navigable map for the journey ahead.
+
+---
+
+## 5. Try it yourself: guided activities
+
+These five guided activities demonstrate how to use SELENE to investigate the real engineering trade-offs of the lunar south pole. Each activity focuses on a specific question, guides you through the relevant application controls, and highlights the key physical patterns to notice.
+
+### Activity 1: Hunting for sunlight on polar ridges
+* **Question to investigate:** Which south polar landforms capture the greatest share of annual sunlight, and how does the Artemis III preset balance illumination with terrain steepness?
+* **Steps:**
+  1. Open the application and find the colour metric selector in the main control panel.
+  2. Select `sun_best_pct` to colour the hexagonal cells by their best-point annual sunlight percentage, and observe where the brightest yellow cells cluster around 89°S to 90°S.
+  3. Change the colour metric to `slope_p95_deg` to examine slope hazards across those same illuminated summits.
+  4. Click the "Artemis III" mission preset button, which assigns 30 percent weight each to sunlight, communications, and terrain safety, and applies a hard filter capping the 95th-percentile slope at 10 degrees.
+* **What to notice:**
+  The best-illuminated summits along the Shackleton crater rim and the connecting ridge reach over 80 percent annual sunlight, but several of those peaks have steep 95th-percentile slopes. When the Artemis III preset is active, cells with excessive slopes are greyed out by the hard filter, leaving safer adjacent plateaus highlighted for crewed landing.
+
+### Activity 2: The prospector's dilemma with weight sliders
+* **Question to investigate:** How do candidate landing locations change across the map when mission priorities shift from crew safety to water-ice prospecting?
+* **Steps:**
+  1. Set the colour metric to `ice_index` to identify cells containing cold traps with maximum temperatures below 110 kelvin.
+  2. Click the "CLPS" mission preset button to load the weighting for an uncrewed prospecting rover (50 percent ice proximity, 20 percent terrain safety, 15 percent sunlight, 15 percent communications, and zero protection).
+  3. Observe which areas receive the highest composite scores on the map.
+  4. Move the "Terrain safety" slider up to 50 percent and reduce the "Ice proximity" slider down to 20 percent to test how risk tolerance alters site selection.
+* **What to notice:**
+  Under the CLPS preset, the top-ranking cells shift directly towards the edges of deep permanently shadowed craters such as Cabeus, Haworth, and Shoemaker, even where illumination is modest. As you increase the terrain safety weight, the top-scoring sites move outward onto flatter plains, illustrating the engineering tension between seeking ice and avoiding steep crater slopes.
+
+### Activity 3: Comparing candidate sites for a permanent base
+* **Question to investigate:** When comparing candidate locations for a permanent lunar base, how do trade-offs in continuous darkness, battery mass, and ice access compare side by side?
+* **Steps:**
+  1. Select the "Base Camp" mission preset, which applies balanced weights across all criteria and enables a hard filter capping continuous darkness at 150 hours.
+  2. Click on a high-scoring cell on the Shackleton crater rim and click the "Pin" button in the inspector to add it to the comparison list.
+  3. Select a second candidate cell on the Malapert massif (around 86°S) and pin it as well.
+  4. Select a third cell on the floor of a nearby depression or plain, pin it, and open the A/B comparison table.
+  5. Compare their values for `dark_max_h_best`, `battery_estimate` mass, and `base_to_ice` distance.
+* **What to notice:**
+  The Shackleton rim cell has short periods of darkness (under 60 hours), resulting in a modest battery mass estimate, but sits further from flat traversable ice access. The Malapert summit provides elevated terrain and steady communications, but involves longer dark periods and greater battery mass. The low-lying cell suffers from hundreds of hours of continuous darkness, causing its battery mass estimate to surge into thousands of kilograms.
+
+### Activity 4: Exploring polar seasons with custom date ranges
+* **Question to investigate:** How does the 347-day lunar seasonal illumination cycle affect solar power availability and continuous darkness between polar summer and polar winter?
+* **Steps:**
+  1. Select a cell on the Shackleton ridge and note its baseline annual sunlight and darkness metrics in the inspector using the default full-year 2027 scenario.
+  2. Open the date selector and choose a 30-day summer window (use the "polar summer" preset; in 2027 the summer peaks in October and November, when the sub-solar latitude reaches its southern extreme).
+  3. Allow the background worker to recompute sunlight metrics, and check the updated `sun_best_pct` and `dark_max_h_best` values in the inspector.
+  4. Change the date range to a 30-day polar winter window about half a lunar year away (the "polar winter" preset; in 2027 the winter is deepest in April and May). The lunar seasonal cycle lasts about 347 days, so these months shift earlier every year.
+  5. Inspect the horizon chart to observe how the Sun track dips relative to the local skyline during winter.
+* **What to notice:**
+  During polar summer, a well-placed ridge cell is lit for most of the month with only brief dips in light. In polar winter, the Sun track sinks behind the surrounding terrain, causing the sunlight percentage to plunge and continuous dark hours to spike. This demonstrates why missions cannot rely on short summer measurements when planning year-round surface infrastructure.
+
+### Activity 5: The Earth link and ground tracking with the DSN panel
+* **Question to investigate:** Why does a direct radio link to Earth experience periodic outages at the south pole, and how does NASA's Deep Space Network ensure that a receiving station is listening whenever Earth is visible?
+* **Steps:**
+  1. Set the colour metric to `earth_best_pct` and observe the difference between the lunar near side (longitudes facing Earth) and far side.
+  2. Switch the colour metric to `earth_outage_max_h_best` to identify areas with long continuous radio blackouts.
+  3. Select a cell near the boundary of the near side and far side, and inspect the 360-degree horizon chart to view the monthly libration loop of Earth dipping behind the local horizon.
+  4. Open the Deep Space Network (DSN) panel to examine the visibility timeline across the three Earth ground stations (Madrid, Goldstone, and Canberra).
+  5. Check the combined link availability, which verifies when Earth is above the local lunar skyline and at least one DSN station has the Moon elevated above 10 degrees.
+* **What to notice:**
+  Earth wobbles across a box of roughly $\pm 7^\circ$ in the lunar sky due to libration, causing low-elevation sites to lose direct contact for days at a time. Meanwhile, in the DSN panel, notice that Earth ground stations rotate beneath the Moon so that at least one station has the Moon in view almost 100 percent of the time. This proves that the critical bottleneck for polar communications is the lunar local terrain horizon rather than ground station availability on Earth.
