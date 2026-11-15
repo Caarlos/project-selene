@@ -1,6 +1,10 @@
 data/raw
 spikes
 
+# owner's working notes: local only
+HUMAN_ACTION.md
+LUNCH_REVIEW.md
+
 **/*.pdf
 
 # Python

@@ -75,7 +75,6 @@ As specified in `PLAN.md` Section 14, the following capabilities are planned for
 * [PLAN.md](PLAN.md): Complete architecture specification, technical decisions, physics equations, data contract schemas, and development guidelines.
 * [docs/TECHNICAL_PRIMER.md](docs/TECHNICAL_PRIMER.md): Non-specialist guide explaining lunar geometry, horizon ray tracing, ephemeris calculations, and key architectural choices.
 * [docs/outreach_guide.md](docs/outreach_guide.md): Educational outreach guide detailing the lunar south pole environment, the Apollo-to-Artemis story, the mythological roots of each module, and mission planning trade-offs.
-* [HUMAN_ACTION.md](HUMAN_ACTION.md): Checklist of actions reserved for the human project owner and the record of design decisions taken during development.
 * [WARNING.md](WARNING.md): Toolchain security scans, dependency audits, and vulnerability mitigation records.
 
 ## Running the application

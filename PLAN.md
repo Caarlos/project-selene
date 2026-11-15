@@ -8,7 +8,7 @@
 |---|---|---|
 | `PLAN.md` (this file) | What to build and the rules for building it. Source of truth for agents. | Agents, technical reviewers |
 | `docs/TECHNICAL_PRIMER.md` | The basics (Moon geometry, horizons, illumination, grids) and why each decision was taken, in plain language. | The project owner, judges, newcomers |
-| `HUMAN_ACTION.md` | Things only the human can do, and the log of decisions taken on the human's behalf, for review. | The project owner |
+| `HUMAN_ACTION.md` (local only, git-ignored) | Things only the human can do, and the log of decisions taken on the human's behalf, for review. | The project owner |
 | `docs/verification/*.md` | Evidence for assumptions marked **[unverified]** below. | Agents |
 
 Items marked **[unverified]** must not be built on until the matching verification report confirms them or this plan is updated.
@@ -377,6 +377,7 @@ Priorities: **P0** must be done for the demonstrator; **P1** should; **P2** coul
 | A1 | P1 | `README.md`, `docs/outreach_guide.md` (module myths restored from the planning conversation), credits | T0 | `README.md`, `docs/outreach_guide.md` |
 | V3 | P2 | Scientific validation of §11 and write-up | P6 | `docs/validation.md` |
 | X1 | P2 | Playwright smoke test | W2 | `web/tests/` |
+| W8 | P1 | Owner review fixes (2026-11-15): active date range always visible in the header and easier date picking; map legend entry for the base-to-ice link; Sun-elevation summary in the inspector (maximum elevation over the range, with a note on near-horizontal sunlight and vertical panels); KPI anchors that need no pipeline run (`iceDistanceScale_km`, `shieldingScale`) editable on screen; selector "best point / cell mean" for the sunlight and Earth KPIs (mean is baseline only, so the selector is disabled on a custom range) | W2, W4, W5 | `services/kpiConfig`, `services/mcda`, `services/store`, `components/astraea/`, `components/artemis/`, `App.tsx` header |
 
 Suggested order with two workers: T0 → (P1 ∥ W1) → (P2 ∥ W2) → (P3 ∥ W3) → (P4 ∥ W4) → P6 → then P1-priority items.
 
