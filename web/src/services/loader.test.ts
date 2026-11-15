@@ -44,7 +44,7 @@ describe('scenario index', () => {
 describe('loadScenario', () => {
   it('loads the fixture: cells, projected polygons, resolved URLs, lazy horizons', async () => {
     stubFetch();
-    const s = await loadScenario(DATA_URL, null);
+    const s = await loadScenario(DATA_URL, 'fixture');
     expect(s.manifest.scenario_id).toBe('fixture');
     expect(s.cells.h3).toHaveLength(14444);
     expect(s.polygons_m).toHaveLength(s.grid.n_cells);
@@ -56,7 +56,7 @@ describe('loadScenario', () => {
 
   it('rejects a wrong schema_version with a clear message', async () => {
     stubFetch({'fixture/manifest.json': {...(json('fixture/manifest.json') as object), schema_version: 2}});
-    await expect(loadScenario(DATA_URL, null)).rejects.toThrow(
+    await expect(loadScenario(DATA_URL, 'fixture')).rejects.toThrow(
       /Unsupported data schema_version 2: this app reads version 1/,
     );
   });
@@ -65,7 +65,7 @@ describe('loadScenario', () => {
     const m = json('fixture/manifest.json') as {grids: {n_cells: number}[]};
     m.grids[0].n_cells = 14445;
     stubFetch({'fixture/manifest.json': m});
-    await expect(loadScenario(DATA_URL, null)).rejects.toThrow(/not of length 14445/);
+    await expect(loadScenario(DATA_URL, 'fixture')).rejects.toThrow(/not of length 14445/);
   });
 
   it('reports a missing file and an unknown scenario', async () => {
