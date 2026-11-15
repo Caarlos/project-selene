@@ -1,7 +1,7 @@
 import {describe, expect, it} from 'vitest';
 import {MISSION_PRESETS} from '../components/artemis/presets';
-import {FILTER_IDS, KPI_IDS} from './kpiConfig';
-import {computeKpis, filtersInto, nearestIceCells, scoreInto, topCells, weightShares, type Weights} from './mcda';
+import {DEFAULT_KPI_SETTINGS, FILTER_IDS, KPI_IDS} from './kpiConfig';
+import {computeKpis, effectiveSettings, filtersInto, nearestIceCells, scoreInto, topCells, weightShares, type Weights} from './mcda';
 import {surfaceDistance_m} from './projection';
 import {defaultFilters, useStore} from './store';
 import {NULLABLE_METRIC_COLUMNS, type Cells} from './types';
@@ -217,6 +217,63 @@ describe('store: presets and recompute', () => {
   });
 });
 
+describe('editable reference values and basis (W8)', () => {
+  // cells 0.5 deg (about 15 km) apart on lon 0; only the first bears ice
+  const cells = makeCells([-85, -85.5], {
+    ice_index: [0.5, 0],
+    svf: [0.9, 0.9],
+    sun_best_pct: [80, 80],
+    sun_mean_pct: [20, 40],
+    earth_best_pct: [90, 90],
+    earth_mean_pct: [10, 30],
+  });
+  const d_km = surfaceDistance_m(-85.5, 0, -85, 0) / 1000;
+
+  it('iceDistanceScale_km and shieldingScale change kpi_ice and kpi_protection as in PLAN 7.2', () => {
+    const k = computeKpis(cells, {...DEFAULT_KPI_SETTINGS, iceDistanceScale_km: 20, shieldingScale: 0.5});
+    expect(k.values.ice[0]).toBe(1);
+    expect(k.values.ice[1]).toBeCloseTo(1 - d_km / 20, 5);
+    expect(k.values.protection[0]).toBeCloseTo((1 - 0.9) / 0.5, 5);
+    const d = computeKpis(cells);
+    expect(d.values.ice[1]).toBeCloseTo(1 - d_km / 30, 5);
+    expect(d.values.protection[0]).toBeCloseTo(0.4, 5);
+  });
+
+  it('iceIndexMin decides which cells bear ice', () => {
+    const k = computeKpis(cells, {...DEFAULT_KPI_SETTINGS, iceIndexMin: 0.9});
+    expect(Array.from(k.nearestIce)).toEqual([-1, -1]);
+    expect(k.values.ice[0]).toBe(0);
+  });
+
+  it('mean basis reads the mean columns; best is the default', () => {
+    const best = computeKpis(cells);
+    expect(best.values.sun[1]).toBeCloseTo(0.8);
+    const mean = computeKpis(cells, {...DEFAULT_KPI_SETTINGS, sunCommsBasis: 'mean'});
+    expect(Array.from(mean.values.sun).map((v) => +v.toFixed(2))).toEqual([0.2, 0.4]);
+    expect(Array.from(mean.values.comms).map((v) => +v.toFixed(2))).toEqual([0.1, 0.3]);
+  });
+
+  it('a custom range falls back to the best point', () => {
+    const mean = {...DEFAULT_KPI_SETTINGS, sunCommsBasis: 'mean'} as const;
+    expect(effectiveSettings(mean, true).sunCommsBasis).toBe('best');
+    expect(effectiveSettings(mean, false).sunCommsBasis).toBe('mean');
+  });
+
+  it('the store recomputes KPIs when a setting changes', () => {
+    useStore.setState({scenario: {grid: {n_cells: 2}} as never, cells, kpis: null, customRange: null});
+    useStore.setState({mcdaScore: new Float32Array(2), excluded: new Uint8Array(2), score: new Float32Array(2)});
+    useStore.getState().setKpiSettings({iceDistanceScale_km: 20});
+    expect(useStore.getState().kpis!.values.ice[1]).toBeCloseTo(1 - d_km / 20, 5);
+    useStore.getState().resetKpiSettings();
+    expect(useStore.getState().kpis!.values.ice[1]).toBeCloseTo(1 - d_km / 30, 5);
+    useStore.setState({customRange: {startIndex: 0, endIndex: 1}});
+    useStore.getState().setKpiSettings({sunCommsBasis: 'mean'});
+    expect(useStore.getState().kpis!.values.sun[1]).toBeCloseTo(0.8); // custom: best point
+    useStore.setState({customRange: null});
+    useStore.getState().resetKpiSettings();
+  });
+});
+
 describe('performance', () => {
   it('rescoring 14,444 cells takes well under the 100 ms budget', () => {
     const n = 14_444;
@@ -248,5 +305,8 @@ describe('performance', () => {
     console.log(`computeKpis ${kpiMs.toFixed(0)} ms, worst rescore ${worst.toFixed(2)} ms`);
     expect(worst).toBeLessThan(100);
     expect(kpiMs).toBeLessThan(1000);
+    const t1 = performance.now();
+    computeKpis(cells, {...DEFAULT_KPI_SETTINGS, iceIndexMin: 0.3});
+    console.log(`computeKpis with a changed reference value ${(performance.now() - t1).toFixed(0)} ms`);
   });
 });

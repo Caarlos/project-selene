@@ -5,6 +5,40 @@ import type {Scenario} from '../../services/loader';
 import {addDays, isoDay, lunarMonthEnd, MAX_RANGE_DAYS, monthRange, validateRange} from '../../services/rangeProtocol';
 import {useStore} from '../../services/store';
 
+/** Header element: the range being analysed, "custom" and "computing…" marked; a click opens the Dates tab. */
+export function HeaderDates({scenario}: {scenario: Scenario}) {
+  const {t0, step_s} = scenario.manifest.ephemeris;
+  const {time} = scenario.manifest;
+  const customRange = useStore((s) => s.customRange);
+  const status = useStore((s) => s.customStatus);
+  const setTab = useStore((s) => s.setPanelTab);
+  const day = (index: number) => isoDay(Date.parse(t0) + index * step_s * 1000);
+  return (
+    <button
+      type="button"
+      data-testid="date-range"
+      title="Change the date range"
+      className="rounded px-1 text-left hover:bg-slate-800"
+      onClick={() => setTab('Dates')}
+    >
+      <span className="text-slate-400">Dates (UTC) </span>
+      {customRange ? (
+        <>
+          <span className="rounded bg-sky-700 px-1 text-xs font-semibold uppercase">custom</span>{' '}
+          {day(customRange.startIndex)} to {day(customRange.endIndex - 1)} (both included)
+        </>
+      ) : (
+        `${time.start.slice(0, 10)} to ${time.end.slice(0, 10)} (end exclusive)`
+      )}
+      {status.phase === 'computing' && (
+        <span className="ml-2 text-amber-300" data-testid="header-computing">
+          computing… {Math.round(status.progress * 100)} %
+        </span>
+      )}
+    </button>
+  );
+}
+
 const btn = 'rounded border border-slate-600 px-2 py-0.5 hover:bg-slate-800 disabled:opacity-40';
 
 export default function DateControl({scenario}: {scenario: Scenario}) {
@@ -27,6 +61,14 @@ export default function DateControl({scenario}: {scenario: Scenario}) {
   const check = validateRange(t0, step_s, n, start, end);
   const computing = status.phase === 'computing';
   const nHorizon = scenario.grid.horizons_n_cells ?? scenario.grid.n_cells;
+
+  /** Preset: fill the inputs and apply in one click (an invalid range only fills them and shows the error). */
+  const run = (s: string, e: string) => {
+    setStart(s);
+    setEnd(e);
+    const v = validateRange(t0, step_s, n, s, e);
+    if (v.ok) void apply(v.startIndex, v.endIndex);
+  };
 
   const activeText = customRange ? `${day(customRange.startIndex)} to ${day(customRange.endIndex - 1)}` : null;
 
@@ -71,27 +113,25 @@ export default function DateControl({scenario}: {scenario: Scenario}) {
           className={btn}
           data-testid="date-lunar"
           title="30 days from the start date (a lunar month is 29.53 days)"
-          onClick={() => setEnd(lunarMonthEnd(start))}
+          onClick={() => run(start, lunarMonthEnd(start))}
         >
           Next lunar month from start
         </button>
-        {[1, 4, 7, 10].map((m) => {
+        {([[1, 'south summer'], [4, 'autumn'], [7, 'south winter'], [10, 'spring']] as const).map(([m, season]) => {
           const r = monthRange(baseYear, m);
           return (
             <button
               key={m}
               type="button"
               className={btn}
-              onClick={() => {
-                setStart(r.start);
-                setEnd(r.end);
-              }}
+              title={`Apply ${r.start} to ${r.end}`}
+              onClick={() => run(r.start, r.end)}
             >
-              {new Date(Date.UTC(baseYear, m - 1, 1)).toLocaleString('en', {month: 'short', timeZone: 'UTC'})} {baseYear}
+              {new Date(Date.UTC(baseYear, m - 1, 1)).toLocaleString('en', {month: 'short', timeZone: 'UTC'})} {baseYear} ({season})
             </button>
           );
         })}
-        <button type="button" className={btn} onClick={() => setEnd(addDays(start, MAX_RANGE_DAYS - 1))}>
+        <button type="button" className={btn} onClick={() => run(start, addDays(start, MAX_RANGE_DAYS - 1))}>
           One year
         </button>
       </div>

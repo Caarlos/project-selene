@@ -1,7 +1,6 @@
 // ARTEMIS mission tools (PLAN.md section 7.4): base-to-ice link and battery estimate for the selected cell.
 import {latLngToCell} from 'h3-js';
 import {useMemo, useState} from 'react';
-import {KPI_ANCHORS} from '../../services/kpiConfig';
 import type {Scenario} from '../../services/loader';
 import {surfaceDistance_m} from '../../services/projection';
 import {useStore} from '../../services/store';
@@ -10,6 +9,7 @@ import {batteryEstimate} from './battery';
 
 function BaseToIce({scenario, row}: {scenario: Scenario; row: number}) {
   const kpis = useStore((s) => s.kpis);
+  const iceIndexMin = useStore((s) => s.kpiSettings.iceIndexMin);
   const focusCell = useStore((s) => s.focusCell);
   const {cells, grid} = scenario;
   const rowOf = useMemo(() => new Map(cells.h3.map((id, i) => [id, i])), [cells]);
@@ -29,10 +29,10 @@ function BaseToIce({scenario, row}: {scenario: Scenario; row: number}) {
       <h3 className="font-semibold">Base to ice</h3>
       {ice < 0 ? (
         <p className="text-slate-400" data-testid="no-ice">
-          No ice-bearing cell in this scenario (none has an ice index of at least {KPI_ANCHORS.iceIndexMin}).
+          No ice-bearing cell in this scenario (none has an ice index of at least {iceIndexMin}).
         </p>
       ) : ice === row ? (
-        <p data-testid="self-ice">This cell bears ice itself (ice index of at least {KPI_ANCHORS.iceIndexMin}).</p>
+        <p data-testid="self-ice">This cell bears ice itself (ice index of at least {iceIndexMin}).</p>
       ) : (
         link && (
           <>

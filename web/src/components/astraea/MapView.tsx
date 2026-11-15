@@ -1,11 +1,11 @@
 // Flat south-polar stereographic map (D-10): hillshade, cells, graticule, selection rings. Configuration proven in
 // docs/verification/V2-rendering.md: cells are never stroked, and the click recogniser waits 5 s for slow picks.
-import {COORDINATE_SYSTEM, OrthographicView, type Color, type PickingInfo} from '@deck.gl/core';
+import {COORDINATE_SYSTEM, OrthographicView, type PickingInfo} from '@deck.gl/core';
 import {BitmapLayer, PathLayer, PolygonLayer, TextLayer} from '@deck.gl/layers';
 import DeckGL, {type DeckGLRef} from '@deck.gl/react';
 import {useEffect, useMemo, useRef, useState} from 'react';
 import {rangeMetrics} from '../../services/ephemeris';
-import {writeCellColour, type Rgba} from '../../services/colour';
+import {ICE_LINK_RGBA, PINNED_RGBA, SELECTED_RGBA, writeCellColour, type Rgba} from '../../services/colour';
 import type {Scenario} from '../../services/loader';
 import {formatMetric, METRIC_INFO} from '../../services/metrics';
 import {projectStereo_m} from '../../services/projection';
@@ -21,8 +21,6 @@ const MERIDIAN_LABELS: [number, string][] = [
   [180, '180°'],
   [-90, '90°W'],
 ];
-const SELECTED_RGBA: Color = [255, 255, 255, 255];
-const PINNED_RGBA: Color = [255, 170, 0, 255];
 
 interface Graticule {
   paths: number[][];
@@ -157,7 +155,7 @@ export default function MapView({scenario}: {scenario: Scenario}) {
       getPath: (d) => d,
       positionFormat: 'XY',
       coordinateSystem: CARTESIAN,
-      getColor: [56, 189, 248, 255],
+      getColor: ICE_LINK_RGBA,
       widthUnits: 'pixels',
       getWidth: 3,
     }),

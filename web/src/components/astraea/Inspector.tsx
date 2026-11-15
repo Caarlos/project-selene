@@ -1,8 +1,9 @@
 // Cell inspector (PLAN.md section 7.1): header, KPI bars, horizon chart with Sun and Earth tracks, raw metrics by module.
 import {lazy, Suspense} from 'react';
-import {KPI_CONFIG, KPI_IDS} from '../../services/kpiConfig';
+import {KPI_IDS, kpiDescription} from '../../services/kpiConfig';
 import type {Scenario} from '../../services/loader';
 import {METRIC_INFO} from '../../services/metrics';
+import {effectiveSettings} from '../../services/mcda';
 import {MAX_PINNED, useStore} from '../../services/store';
 import {METRIC_GROUPS} from './metricGroups';
 import {useCellSky, type CellSky} from './useCellSky';
@@ -64,6 +65,25 @@ function Recomputed({sky, row, scenario}: {sky: CellSky; row: number; scenario: 
   );
 }
 
+/** Highest Sun elevation in the (sampled) Sun track, degrees; null for an empty track. */
+export function maxSunElevation_deg(track: Float32Array): number | null {
+  let max = -Infinity;
+  for (let j = 1; j < track.length; j += 3) if (track[j] > max) max = track[j];
+  return max === -Infinity ? null : max;
+}
+
+function SunSummary({sky}: {sky: CellSky}) {
+  const max = maxSunElevation_deg(sky.sun);
+  if (max === null) return null;
+  return (
+    <p className="mt-2 rounded bg-slate-800 p-2 text-xs text-slate-300" data-testid="sun-summary">
+      Highest Sun at this cell in the active dates: <strong data-testid="sun-max-elevation">{max.toFixed(1)}°</strong> above
+      the flat horizontal. Sunlight arrives almost horizontally, so solar panels must be vertical or mast-mounted and
+      rotate through 360°.
+    </p>
+  );
+}
+
 function HorizonSection({scenario, row}: {scenario: Scenario; row: number}) {
   const customRange = useStore((s) => s.customRange);
   const state = useCellSky(scenario, row, customRange);
@@ -86,6 +106,7 @@ function HorizonSection({scenario, row}: {scenario: Scenario; row: number}) {
           <Suspense fallback={<p className="text-slate-400">Loading chart…</p>}>
             <HorizonChart sky={state.sky} />
           </Suspense>
+          <SunSummary sky={state.sky} />
           <Recomputed sky={state.sky} row={row} scenario={scenario} />
         </>
       )}
@@ -99,6 +120,7 @@ export default function Inspector({scenario}: {scenario: Scenario}) {
   const togglePin = useStore((s) => s.togglePin);
   const kpis = useStore((s) => s.kpis);
   const custom = useStore((s) => s.customRange) !== null;
+  const settings = effectiveSettings(useStore((s) => s.kpiSettings), custom);
   useStore((s) => s.colourVersion); // score buffers change in place
   const {manifest} = scenario;
   const cells = useStore((s) => s.cells) ?? scenario.cells; // custom-range columns when a range is active
@@ -139,10 +161,11 @@ export default function Inspector({scenario}: {scenario: Scenario}) {
         {kpis &&
           KPI_IDS.map((k) => {
             const v = kpis.available[k] ? kpis.values[k][selected] : NaN;
+            const def = kpiDescription(k, settings);
             return (
-              <div key={k} title={KPI_CONFIG[k].explanation}>
+              <div key={k} title={`${def.explanation} Unit: ${def.unit}.`}>
                 <div className="flex justify-between text-xs">
-                  <span className="text-slate-400">{KPI_CONFIG[k].label}</span>
+                  <span className="text-slate-400">{def.label}</span>
                   <span data-testid={`cell-kpi-${k}`}>{show(v, '0–1')}</span>
                 </div>
                 <div className="h-1.5 rounded bg-slate-800">

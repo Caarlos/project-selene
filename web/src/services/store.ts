@@ -2,16 +2,17 @@
 // rewritten in place; `colourVersion` is the only signal the map needs to recolour.
 import {create} from 'zustand';
 import {MISSION_PRESETS} from '../components/artemis/presets';
-import {FILTER_CONFIG, FILTER_IDS, KPI_IDS, type FilterId, type KpiId} from './kpiConfig';
+import {DEFAULT_KPI_SETTINGS, FILTER_CONFIG, FILTER_IDS, KPI_IDS, type FilterId, type KpiId, type KpiSettings} from './kpiConfig';
 import {cellPoint} from '../components/astraea/useCellSky';
 import {countMissing, withRangeValues} from './customCells';
 import {loadEphemeris, loadHorizons, loadScenario, type Scenario} from './loader';
-import {computeKpis, filtersInto, scoreInto, type FilterState, type Kpis, type ScoreHint, type Weights} from './mcda';
+import {computeKpis, effectiveSettings, filtersInto, scoreInto, type FilterState, type Kpis, type ScoreHint, type Weights} from './mcda';
 import type {ColourField} from './metrics';
 import {startRangeJob, type RangeJob} from './rangeRunner';
 import type {Cells} from './types';
 
 export const MAX_PINNED = 3;
+export const PANEL_TABS = ['Inspector', 'Mission tools', 'Compare', 'Dates'] as const;
 
 export interface ValueRange {
   min: number;
@@ -70,6 +71,8 @@ export interface SeleneState {
   /** Row indexes of pinned cells, oldest first, at most MAX_PINNED. */
   pinned: number[];
   colourBy: ColourField;
+  /** Active tab of the right-hand panel; the header date range sets it to 'Dates'. */
+  panelTab: (typeof PANEL_TABS)[number];
   /** Per cell, 0..1 = position on the colour ramp, NaN = no value. Same buffer for the life of the scenario. */
   score: Float32Array;
   /** Per cell, non-zero = excluded by a hard filter (drawn grey). Same buffer for the life of the scenario. */
@@ -80,6 +83,8 @@ export interface SeleneState {
   kpis: Kpis | null;
   /** Slider values 0..100 per KPI. */
   weights: Weights;
+  /** User reference values and the best-point / cell-mean choice. Use `effectiveSettings` to read the ones in force. */
+  kpiSettings: KpiSettings;
   filters: FilterState;
   /** Per cell MCDA score 0..1 (NaN = none); rewritten in place by `rescore`, used for the ranking and the panels. */
   mcdaScore: Float32Array;
@@ -111,7 +116,11 @@ export interface SeleneState {
   /** Pins the cell, or unpins it if already pinned. Returns false when MAX_PINNED cells are already pinned. */
   togglePin(index: number): boolean;
   setColourBy(field: ColourField): void;
+  setPanelTab(tab: (typeof PANEL_TABS)[number]): void;
   setWeight(kpi: KpiId, value: number): void;
+  /** Changes reference values: recomputes the KPIs (incl. nearest-ice distances), then rescores. Not for weight moves. */
+  setKpiSettings(patch: Partial<KpiSettings>): void;
+  resetKpiSettings(): void;
   setFilter(id: FilterId, patch: Partial<{enabled: boolean; limit: number}>): void;
   applyPreset(presetId: string): void;
   /** Equal weights, all filters off. */
@@ -133,10 +142,12 @@ export const useStore = create<SeleneState>()((set, get) => ({
   selected: null,
   pinned: [],
   colourBy: 'score',
+  panelTab: 'Inspector',
   score: new Float32Array(0),
   excluded: new Uint8Array(0),
   kpis: null,
   weights: {...DEFAULT_WEIGHTS},
+  kpiSettings: {...DEFAULT_KPI_SETTINGS},
   filters: defaultFilters(),
   mcdaScore: new Float32Array(0),
   excludedCount: 0,
@@ -158,7 +169,7 @@ export const useStore = create<SeleneState>()((set, get) => ({
       jobSeq++;
       job?.cancel();
       job = null;
-      const kpis = computeKpis(scenario.cells);
+      const kpis = computeKpis(scenario.cells, effectiveSettings(get().kpiSettings, false));
       set({
         cells: scenario.cells,
         baselineKpis: kpis,
@@ -212,7 +223,7 @@ export const useStore = create<SeleneState>()((set, get) => ({
       set({
         customRange: {startIndex, endIndex},
         cells,
-        kpis: computeKpis(cells),
+        kpis: computeKpis(cells, effectiveSettings(get().kpiSettings, true)),
         customMissing: countMissing(values),
         customStatus: {phase: 'idle'},
       });
@@ -235,9 +246,11 @@ export const useStore = create<SeleneState>()((set, get) => ({
     jobSeq++;
     job?.cancel();
     job = null;
-    const {scenario, baselineKpis} = get();
+    const {scenario, baselineKpis, kpiSettings} = get();
     if (!scenario) return;
-    set({customRange: null, cells: scenario.cells, kpis: baselineKpis, customMissing: 0, customStatus: {phase: 'idle'}});
+    // baselineKpis is null after a reference value changed during a custom range
+    const kpis = baselineKpis ?? computeKpis(scenario.cells, kpiSettings);
+    set({customRange: null, cells: scenario.cells, baselineKpis: kpis, kpis, customMissing: 0, customStatus: {phase: 'idle'}});
     get().rescore();
   },
 
@@ -251,6 +264,8 @@ export const useStore = create<SeleneState>()((set, get) => ({
     return true;
   },
 
+  setPanelTab: (panelTab) => set({panelTab}),
+
   setColourBy(field) {
     set({colourBy: field});
     get().recolour();
@@ -259,6 +274,20 @@ export const useStore = create<SeleneState>()((set, get) => ({
   setWeight(kpi, value) {
     set({weights: {...get().weights, [kpi]: value}});
     get().rescore();
+  },
+
+  setKpiSettings(patch) {
+    const {scenario, customRange} = get();
+    const kpiSettings = {...get().kpiSettings, ...patch};
+    if (!scenario) return set({kpiSettings});
+    const cells = get().cells ?? scenario.cells;
+    const kpis = computeKpis(cells, effectiveSettings(kpiSettings, customRange !== null));
+    set({kpiSettings, kpis, baselineKpis: customRange ? null : kpis});
+    get().rescore();
+  },
+
+  resetKpiSettings() {
+    get().setKpiSettings({...DEFAULT_KPI_SETTINGS});
   },
 
   setFilter(id, patch) {

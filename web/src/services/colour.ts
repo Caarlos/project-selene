@@ -26,6 +26,11 @@ export type Rgba = [number, number, number, number];
 export const CELL_ALPHA = 175;
 /** Excluded by a hard filter: greyed, never hidden (PLAN.md section 7.1). */
 export const EXCLUDED_RGBA: Rgba = [150, 150, 150, 150];
+/** Outlines of the selected and the pinned cells on the map. */
+export const SELECTED_RGBA: Rgba = [255, 255, 255, 255];
+export const PINNED_RGBA: Rgba = [255, 170, 0, 255];
+/** Link from the selected cell to its nearest ice-bearing cell. */
+export const ICE_LINK_RGBA: Rgba = [56, 189, 248, 255];
 /** No value (null metric or no score yet): faint neutral veil. */
 export const NULL_RGBA: Rgba = [30, 30, 40, 70];
 

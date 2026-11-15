@@ -15,6 +15,26 @@ export const KPI_ANCHORS = {
   shieldingScale: 0.25,
 } as const;
 
+/** Whether kpi_sun / kpi_comms read the best-point or the cell-mean columns. */
+export type SunCommsBasis = 'best' | 'mean';
+
+/** The user-adjustable reference values. `DEFAULT_KPI_SETTINGS` is built from `KPI_ANCHORS`, the single source. */
+export interface KpiSettings {
+  iceDistanceScale_km: number;
+  iceIndexMin: number;
+  shieldingScale: number;
+  sunCommsBasis: SunCommsBasis;
+}
+
+export const DEFAULT_KPI_SETTINGS: KpiSettings = {...KPI_ANCHORS, sunCommsBasis: 'best'};
+
+/** Limits of the editable reference values (inputs and the reset button). */
+export const KPI_SETTING_LIMITS = {
+  iceDistanceScale_km: {min: 1, max: 200, step: 1},
+  iceIndexMin: {min: 0.01, max: 1, step: 0.05},
+  shieldingScale: {min: 0.05, max: 1, step: 0.05},
+} as const;
+
 export interface KpiDefinition {
   label: string;
   /** Ecosystem module that owns the criterion (PLAN.md section 2). */
@@ -83,3 +103,27 @@ export const FILTER_CONFIG: Record<FilterId, FilterDefinition> = {
   dark_max_h_best: {label: 'Maximum longest darkness', kind: 'max', unit: 'h', defaultLimit: 150},
   earth_best_pct: {label: 'Minimum Earth visibility', kind: 'min', unit: '%', defaultLimit: 50},
 };
+
+/** `KPI_CONFIG[id]` with the texts and inputs that depend on the current settings. */
+export function kpiDescription(id: KpiId, s: KpiSettings): KpiDefinition {
+  const d = KPI_CONFIG[id];
+  const mean = s.sunCommsBasis === 'mean';
+  const basis = mean ? 'cell-mean' : 'best-point';
+  const where = mean ? 'averaged over the sample points of the cell' : 'at the best point of the cell';
+  switch (id) {
+    case 'sun':
+      return {...d, unit: `${basis} sunlight / 100`, explanation: `Share of the date range with the Sun above the horizon, ${where}.`, inputs: [mean ? 'sun_mean_pct' : 'sun_best_pct']};
+    case 'comms':
+      return {...d, unit: `${basis} Earth visibility / 100`, explanation: `Share of the date range with Earth above the horizon, ${where}.`, inputs: [mean ? 'earth_mean_pct' : 'earth_best_pct']};
+    case 'ice':
+      return {
+        ...d,
+        unit: `1 at an ice cell, 0 at ${s.iceDistanceScale_km} km or more`,
+        explanation: `Closeness to the nearest cell with ice index of at least ${s.iceIndexMin}, along the surface.`,
+      };
+    case 'protection':
+      return {...d, unit: `(1 - sky view factor) / ${s.shieldingScale}, at most 1`};
+    default:
+      return d;
+  }
+}

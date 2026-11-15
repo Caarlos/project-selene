@@ -1,6 +1,6 @@
 // MCDA engine (PLAN.md section 7.2): five KPI arrays per scenario, weighted score, hard filters.
 // Pure functions over typed arrays; `NaN` marks "no value". The `*Into` functions write into caller buffers.
-import {FILTER_CONFIG, FILTER_IDS, KPI_ANCHORS, KPI_IDS, type FilterId, type KpiId} from './kpiConfig';
+import {DEFAULT_KPI_SETTINGS, FILTER_CONFIG, FILTER_IDS, KPI_IDS, type FilterId, type KpiId, type KpiSettings} from './kpiConfig';
 import {projectStereo_m, surfaceDistance_m} from './projection';
 import type {Cells} from './types';
 
@@ -83,8 +83,15 @@ export function nearestIceCells(
   return {index, distance_m};
 }
 
-/** Computes the five KPI arrays once per scenario. */
-export function computeKpis(cells: Cells): Kpis {
+/** Mean columns exist only for the baseline (PLAN 7.3): on a custom range the best-point columns are always used. */
+export function effectiveSettings(s: KpiSettings, customRange: boolean): KpiSettings {
+  return customRange && s.sunCommsBasis === 'mean' ? {...s, sunCommsBasis: 'best'} : s;
+}
+
+/** Computes the five KPI arrays; once per scenario and whenever a reference value changes (not on weight moves). */
+export function computeKpis(cells: Cells, settings: KpiSettings = DEFAULT_KPI_SETTINGS): Kpis {
+  const sunCol = settings.sunCommsBasis === 'mean' ? cells.sun_mean_pct : cells.sun_best_pct;
+  const earthCol = settings.sunCommsBasis === 'mean' ? cells.earth_mean_pct : cells.earth_best_pct;
   const n = cells.h3.length;
   const values = {} as Record<KpiId, Float32Array>;
   for (const k of KPI_IDS) values[k] = new Float32Array(n).fill(NaN);
@@ -93,16 +100,16 @@ export function computeKpis(cells: Cells): Kpis {
 
   const isIce = new Array<boolean>(n);
   for (let i = 0; i < n; i++) {
-    const sun = cells.sun_best_pct[i];
-    const earth = cells.earth_best_pct[i];
+    const sun = sunCol[i];
+    const earth = earthCol[i];
     const safe = cells.safe_frac[i];
     const svf = cells.svf[i];
     const ice = cells.ice_index[i];
     if (sun !== null) values.sun[i] = clamp01(sun / 100);
     if (earth !== null) values.comms[i] = clamp01(earth / 100);
     if (safe !== null) values.terrain[i] = clamp01(safe);
-    if (svf !== null) values.protection[i] = clamp01((1 - svf) / KPI_ANCHORS.shieldingScale);
-    isIce[i] = ice !== null && ice >= KPI_ANCHORS.iceIndexMin;
+    if (svf !== null) values.protection[i] = clamp01((1 - svf) / settings.shieldingScale);
+    isIce[i] = ice !== null && ice >= settings.iceIndexMin;
     if (sun !== null) available.sun = true;
     if (earth !== null) available.comms = true;
     if (safe !== null) available.terrain = true;
@@ -114,7 +121,7 @@ export function computeKpis(cells: Cells): Kpis {
     // No ice-bearing cell at all: every cell is infinitely far, so the KPI is 0.
     for (let i = 0; i < n; i++) {
       const d = near.distance_m[i];
-      values.ice[i] = Number.isNaN(d) ? 0 : clamp01(1 - d / (KPI_ANCHORS.iceDistanceScale_km * 1000));
+      values.ice[i] = Number.isNaN(d) ? 0 : clamp01(1 - d / (settings.iceDistanceScale_km * 1000));
     }
   }
   return {values, available, nearestIce: near.index, nearestIceDistance_m: near.distance_m};
