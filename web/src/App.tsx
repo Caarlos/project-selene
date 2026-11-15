@@ -1,49 +1,74 @@
-import {useEffect, useState} from 'react';
-import {parseManifest, type Manifest, type ScenarioIndexEntry} from './services/types';
-
-const DATA_URL = `${import.meta.env.BASE_URL}data/`;
-
-async function fetchJson(path: string): Promise<unknown> {
-  const res = await fetch(DATA_URL + path);
-  if (!res.ok) throw new Error(`${path}: HTTP ${res.status}`);
-  return res.json();
-}
-
-async function loadFirstManifest(): Promise<Manifest> {
-  const index = (await fetchJson('index.json')) as ScenarioIndexEntry[];
-  if (!Array.isArray(index) || !index[0]?.manifest) throw new Error('index.json lists no scenario');
-  return parseManifest(await fetchJson(index[0].manifest));
-}
+import {useEffect} from 'react';
+import CellPanel from './components/astraea/CellPanel';
+import ColourLegend from './components/astraea/ColourLegend';
+import MapView from './components/astraea/MapView';
+import {HardFilters, McdaWeights, TopCells} from './components/astraea/McdaControls';
+import PresetButtons from './components/artemis/PresetButtons';
+import {useStore} from './services/store';
 
 export default function App() {
-  const [manifest, setManifest] = useState<Manifest>();
-  const [error, setError] = useState<string>();
+  const status = useStore((s) => s.status);
+  const error = useStore((s) => s.error);
+  const scenario = useStore((s) => s.scenario);
+  const load = useStore((s) => s.load);
 
   useEffect(() => {
-    loadFirstManifest().then(setManifest, (e: unknown) => setError(String(e)));
-  }, []);
+    const dataUrl = new URL(`${import.meta.env.BASE_URL}data/`, document.baseURI).href;
+    void load(dataUrl, new URLSearchParams(location.search).get('scenario'));
+  }, [load]);
 
-  const nCells = manifest?.grids.reduce((sum, g) => sum + g.n_cells, 0);
+  const manifest = scenario?.manifest;
   return (
-    <main className="min-h-screen bg-slate-950 text-slate-100">
+    <div className="flex h-screen flex-col bg-slate-950 text-slate-100">
       {manifest?.synthetic && (
         <p role="status" className="bg-amber-400 px-4 py-1 text-center font-semibold text-black">
           Synthetic data: placeholder values, not real lunar measurements
         </p>
       )}
-      <div className="p-6">
-        <h1 className="text-2xl font-bold">SELENE</h1>
-        {error && <p role="alert" className="mt-4 text-red-400">Could not load scenario data: {error}</p>}
-        {!error && !manifest && <p className="mt-4">Loading scenario…</p>}
-        {manifest && (
-          <dl className="mt-4 grid w-fit grid-cols-2 gap-x-6 gap-y-1">
-            <dt className="text-slate-400">Scenario</dt>
-            <dd data-testid="scenario-id">{manifest.scenario_id}</dd>
-            <dt className="text-slate-400">Cells</dt>
-            <dd data-testid="cell-count">{nCells?.toLocaleString('en-US')}</dd>
-          </dl>
+      <header className="flex flex-wrap items-baseline gap-x-6 gap-y-1 border-b border-slate-800 px-4 py-2">
+        <h1 className="text-xl font-bold">SELENE</h1>
+        {manifest && scenario && (
+          <>
+            <span>
+              <span className="text-slate-400">Scenario </span>
+              <span data-testid="scenario-id">{manifest.scenario_id}</span>
+            </span>
+            <span data-testid="date-range">
+              <span className="text-slate-400">Dates (UTC) </span>
+              {manifest.time.start.slice(0, 10)} to {manifest.time.end.slice(0, 10)} (end exclusive)
+            </span>
+            <span>
+              <span className="text-slate-400">Cells </span>
+              <span data-testid="cell-count">{scenario.grid.n_cells.toLocaleString('en-US')}</span>
+            </span>
+          </>
         )}
-      </div>
-    </main>
+      </header>
+      {status === 'error' && (
+        <p role="alert" className="m-4 rounded bg-red-950 p-4 text-red-200">
+          Could not load scenario data: {error}
+        </p>
+      )}
+      {status === 'loading' && <p className="m-4">Loading scenario…</p>}
+      {status === 'ready' && scenario && (
+        <div className="flex min-h-0 flex-1">
+          <aside className="w-64 shrink-0 space-y-3 overflow-y-auto border-r border-slate-800 p-3">
+            <PresetButtons />
+            <McdaWeights />
+            <HardFilters />
+            <TopCells />
+          </aside>
+          <main className="relative min-w-0 flex-1">
+            <MapView scenario={scenario} />
+            <div className="absolute top-3 left-3">
+              <ColourLegend />
+            </div>
+          </main>
+          <aside className="w-80 shrink-0 overflow-y-auto border-l border-slate-800 p-3">
+            <CellPanel scenario={scenario} />
+          </aside>
+        </div>
+      )}
+    </div>
   );
 }
