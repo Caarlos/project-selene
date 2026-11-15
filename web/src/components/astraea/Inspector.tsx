@@ -21,7 +21,7 @@ const lonText = (lon: number) => `${Math.abs(lon).toFixed(3)}°${lon < 0 ? 'W' :
 
 function Recomputed({sky, row, scenario}: {sky: CellSky; row: number; scenario: Scenario}) {
   const custom = useStore((s) => s.customRange) !== null;
-  const c = scenario.cells;
+  const c = scenario.cells; // always the loaded baseline: this column is labelled "Stored baseline"
   const {metrics: m, range} = sky;
   const rows: [string, string, number, number | null, string, string][] = [
     ['Sunlight', 'sun', m.sun_pct, c.sun_best_pct[row], '%', 'sun_best_pct'],
@@ -100,7 +100,8 @@ export default function Inspector({scenario}: {scenario: Scenario}) {
   const kpis = useStore((s) => s.kpis);
   const custom = useStore((s) => s.customRange) !== null;
   useStore((s) => s.colourVersion); // score buffers change in place
-  const {cells, manifest} = scenario;
+  const {manifest} = scenario;
+  const cells = useStore((s) => s.cells) ?? scenario.cells; // custom-range columns when a range is active
 
   if (selected === null) return <p className="text-slate-400">Click a cell on the map to inspect it.</p>;
   const {mcdaScore, excluded} = useStore.getState();

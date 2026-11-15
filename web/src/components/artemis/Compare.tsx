@@ -11,7 +11,7 @@ export default function Compare({scenario}: {scenario: Scenario}) {
   const select = useStore((s) => s.select);
   const kpis = useStore((s) => s.kpis);
   useStore((s) => s.colourVersion); // score buffers change in place
-  const {cells} = scenario;
+  const cells = useStore((s) => s.cells) ?? scenario.cells; // custom-range columns when a range is active
   const {mcdaScore} = useStore.getState();
 
   if (pinned.length === 0) {

@@ -88,12 +88,12 @@ export function earthAzEl(
 }
 
 /** Horizon elevation in degrees at azimuth `az_deg`: linear between integer azimuths, wrapping 359 -> 0. */
-export function horizonAt(horizon_cdeg: Int16Array, az_deg: number): number {
+export function horizonAt(horizon_cdeg: Int16Array | Float64Array, az_deg: number, unit_per_deg = 100): number {
   let a = az_deg % 360;
   if (a < 0) a += 360;
   const i0 = Math.floor(a) % 360;
   const w = a - Math.floor(a);
-  return (horizon_cdeg[i0] * (1 - w) + horizon_cdeg[(i0 + 1) % 360] * w) / 100;
+  return (horizon_cdeg[i0] * (1 - w) + horizon_cdeg[(i0 + 1) % 360] * w) / unit_per_deg;
 }
 
 /** Lit fraction of the solar disc, 0..1 (section 5.3): clamp((el + rho - H) / (2 rho), 0, 1). */
@@ -136,12 +136,13 @@ export function rangeMetrics(
   lat_deg: number,
   lon_deg: number,
   height_m: number,
-  horizon_cdeg: Int16Array,
+  horizon_cdeg: Int16Array | Float64Array,
   table: Float32Array,
   startIndex: number,
   endIndex: number,
   step_s: number,
   out: Float64Array,
+  horizonUnitsPerDeg = 100,
 ): void {
   const n = endIndex - startIndex;
   if (!(n > 0)) {
@@ -162,7 +163,7 @@ export function rangeMetrics(
     const o = k * 5;
     const cs = Math.cos(table[o + 1] * RAD);
     dirAzEl(cs * Math.cos(table[o] * RAD), cs * Math.sin(table[o] * RAD), Math.sin(table[o + 1] * RAD), f, ae);
-    const lit = litFraction(ae[1], horizonAt(horizon_cdeg, ae[0]));
+    const lit = litFraction(ae[1], horizonAt(horizon_cdeg, ae[0], horizonUnitsPerDeg));
     litSum += lit;
     if (lit === 0) {
       if (++dark > darkMax) darkMax = dark;
@@ -177,7 +178,7 @@ export function rangeMetrics(
       f,
       ae,
     );
-    if (ae[1] > horizonAt(horizon_cdeg, ae[0])) {
+    if (ae[1] > horizonAt(horizon_cdeg, ae[0], horizonUnitsPerDeg)) {
       earthSteps++;
       out_ = 0;
     } else if (++out_ > outMax) outMax = out_;
