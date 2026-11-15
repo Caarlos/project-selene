@@ -1,3 +1,5 @@
+> **Correction (2026-11-15):** the converter in this spike (`diviner_prp_to_geotiff.py`) wrote the Diviner grid transposed (x and y swapped). It was found by checking against the LOLA shadow mask (agreement 0.19 as written, 0.88 after the fix). The corrected converter is `pipeline/hestia/ice.py` (`prp_zip_to_geotiff`); `data/raw/diviner_prp_south_500m.tif` was regenerated. Do not use the spike script.
+
 # Verification V1-data-ephemeris
 
 Run date: 2026-11-14. Spikes and logs: `spikes/V1-data-ephemeris/`. Downloads: `data/raw/` (551 MB).
