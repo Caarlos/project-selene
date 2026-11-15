@@ -1,5 +1,6 @@
 // Landing page: what the application does, in the order a first-time visitor needs it. Shown until the map is opened.
 import {MISSION_PRESETS} from '../artemis/presets';
+import logo from '../../../../assets/selene-logo.webp';
 
 const MAIN = [
   {
@@ -38,7 +39,8 @@ export default function Landing() {
   return (
     <div className="flex-1 overflow-y-auto" data-testid="landing">
       <div className="mx-auto max-w-5xl space-y-10 px-6 py-12">
-        <section className="space-y-4">
+        <section className="flex flex-col-reverse items-center gap-8 md:flex-row">
+          <div className="space-y-4">
           <p className="text-sm tracking-widest text-sky-300 uppercase">Lunar south pole · 80°S to 90°S</p>
           <h2 className="text-4xl font-bold">Find and compare landing sites at the Moon&apos;s south pole</h2>
           <p className="max-w-3xl text-lg text-slate-300">
@@ -52,6 +54,12 @@ export default function Landing() {
           >
             Open the map
           </a>
+          </div>
+          <img
+            src={logo}
+            alt="SELENE emblem: nine hexagonal patches, one for each module, around the SELENE core"
+            className="w-72 shrink-0 rounded-lg"
+          />
         </section>
 
         <section className="grid gap-4 md:grid-cols-3">

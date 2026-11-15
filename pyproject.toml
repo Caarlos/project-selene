@@ -7,6 +7,7 @@ name = "selene-pipeline"
 version = "0.1.0"
 description = "SELENE offline pipeline (lunar south pole site metrics)"
 requires-python = ">=3.12"
+license = "MIT"
 dependencies = [
     "numpy==2.5.4",
     "numba==0.68.1",

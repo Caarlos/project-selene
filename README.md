@@ -1,5 +1,10 @@
 # SELENE: Selenographic Exploration & Lunar Environment Navigation Engine
 
+<p align="center">
+  <img src="assets/selene-logo.webp" width="420" alt="SELENE emblem: nine hexagonal patches, one for each module, around the SELENE core"><br>
+  <sub>Emblem: AI-generated image.</sub>
+</p>
+
 SELENE is an interactive, scientifically defensible web platform designed to evaluate, compare, and select landing and base sites at the lunar south pole (80°S–90°S). Developed for the NASA Space Apps Challenge 2026 challenge "Lunar Landing Site Navigator", the system bridges high-precision planetary science and real-time mission decision analysis. By decoupling heavy offline physical computations—spherical ray tracing over high-resolution elevation models, solar and Earth ephemeris tracking with physical libration, thermal ice stability modeling, and slope hazard analysis—from an entirely static client-side web application, SELENE empowers mission planners, scientists, and the public to interactively balance critical exploration trade-offs across thousands of lunar-scaled hexagonal sites.
 
 ## Modules
@@ -57,6 +62,65 @@ Project SELENE uses public-domain planetary datasets published by NASA and its i
   * Polar surface thermal models: Diviner Polar Resource Product (`dlre_prp_south.zip`, Paige et al., 2010), providing annual maximum temperature (`temp_max_K`) and annual average temperature (`temp_avg_K`) at approximately 507 m resolution, from the NASA PDS Geosciences Node.
 * **NASA JPL Horizons:**
   * High-precision lunar ephemeris: hourly solar and Earth direction vectors, sub-solar points, sub-Earth points, and Earth–Moon center distances (DE441 ephemeris, target `301`, observer center `500@399`, quantities `14,15,20`) generated via the NASA JPL Horizons system.
+
+## References and Third-Party Software
+
+No data from Space Apps partner agencies is used; all data are from NASA (public domain, see Data Credits above).
+
+**Data sources**
+
+| Resource | Link |
+|---|---|
+| LRO LOLA polar elevation models (PDS Geosciences Node) | <https://pds-geosciences.wustl.edu/lro/lro-l-lola-3-rdr-v1/lrolol_1xxx/data/lola_gdr/polar/> |
+| LOLA permanently shadowed regions and average visibility maps (NASA Goddard PGDA) | <https://pgda.gsfc.nasa.gov/data/MoonIllumination/> |
+| LRO Diviner Polar Resource Product (PDS Geosciences Node) | <https://pds-geosciences.wustl.edu/lro/urn-nasa-pds-lro_diviner_derived1/extras/prp/> |
+| NASA JPL Horizons ephemeris system (DE441) | <https://ssd.jpl.nasa.gov/horizons/> |
+| NASA Deep Space Network (station locations) | <https://www.nasa.gov/communicating-with-missions/dsn/> |
+
+**Papers**
+
+* Mazarico, E., et al. (2011). Illumination conditions of the lunar polar regions using LOLA topography. *Icarus*, 211, 1066–1081. <https://doi.org/10.1016/j.icarus.2010.10.030>
+* Paige, D. A., et al. (2010). Diviner Lunar Radiometer observations of cold traps in the Moon's south polar region. *Science*, 330, 479–482. <https://doi.org/10.1126/science.1187726>
+
+**Web app libraries**
+
+| Library | Licence | Link |
+|---|---|---|
+| React, React DOM | MIT | <https://react.dev/> |
+| deck.gl | MIT | <https://deck.gl/> |
+| h3-js (Uber H3) | Apache-2.0 | <https://h3geo.org/> |
+| Apache ECharts | Apache-2.0 | <https://echarts.apache.org/> |
+| astronomy-engine | MIT | <https://github.com/cosinekitty/astronomy> |
+| Zustand | MIT | <https://github.com/pmndrs/zustand> |
+| Tailwind CSS | MIT | <https://tailwindcss.com/> |
+| react-markdown, remark-gfm, remark-math, rehype-katex | MIT | <https://github.com/remarkjs/react-markdown> |
+| KaTeX | MIT | <https://katex.org/> |
+| Vite, Vitest | MIT | <https://vite.dev/> |
+| TypeScript | Apache-2.0 | <https://www.typescriptlang.org/> |
+| Playwright | Apache-2.0 | <https://playwright.dev/> |
+| ESLint, typescript-eslint | MIT | <https://eslint.org/> |
+
+**Pipeline libraries**
+
+| Library | Licence | Link |
+|---|---|---|
+| NumPy | BSD-3-Clause | <https://numpy.org/> |
+| Numba | BSD-2-Clause | <https://numba.pydata.org/> |
+| Rasterio | BSD-3-Clause | <https://github.com/rasterio/rasterio> |
+| h3 (Python bindings of Uber H3) | Apache-2.0 | <https://h3geo.org/> |
+| Pillow | MIT-CMU | <https://python-pillow.org/> |
+| jsonschema | MIT | <https://github.com/python-jsonschema/jsonschema> |
+| pytest | MIT | <https://pytest.org/> |
+| Ruff | MIT | <https://github.com/astral-sh/ruff> |
+
+## Use of AI
+
+AI tools were used to speed up execution, under the team's direction and review:
+
+* **Claude (Anthropic), through Claude Code:** wrote most of the pipeline and web app code, the automated tests and parts of the documentation, working from the team's plan and decisions.
+* **Gemini (Google):** preparatory research on the challenge, drafts of the documentation, second-opinion reads of the code, and the SELENE emblem.
+
+The emblem (`assets/selene-logo.webp`) is an AI-generated image and carries a visible "AI-generated image" watermark. It uses no NASA logos, flags or mission identifiers. The results were checked against NASA's published maps ([docs/validation.md](docs/validation.md)), not taken on trust.
 
 ## Deferred Features
 
@@ -169,3 +233,7 @@ Only needed to change the scenario (dates, region, parameters). The NASA inputs 
 ```
 
 `python -m pipeline.selene_build --help` lists every option. Each build is checked against the data contract and added to `web/public/data/index.json`; the first entry of that file is the scenario the app opens by default.
+
+## License
+
+Code and documentation: [MIT License](LICENSE), © 2026 Carlos Sanz Garzón and Alejandro Pascual. The NASA data are public domain. Third-party libraries keep their own licences, listed above.
