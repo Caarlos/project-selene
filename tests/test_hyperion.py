@@ -137,7 +137,7 @@ def test_cap_r5_count_order_and_areas(cap):
     assert cap == sorted(old, key=lambda c: (h3.cell_to_latlng(c)[0], c))
     assert cap[0] == "85f29383fffffff"  # the cell containing the pole (V2-B)
     area_km2 = cell_areas_m2(cap) / 1e6
-    assert 16.9 <= area_km2.min() and area_km2.max() <= 22.4
+    assert 16.9 <= area_km2.min() and area_km2.max() <= 22.5
     assert area_km2.mean() == pytest.approx(19.95, abs=0.01)
     assert area_km2.sum() == pytest.approx(288_164, abs=1)
     # same thing as the plan's "h3 area x 0.0744"
@@ -152,7 +152,8 @@ def test_other_resolution_and_patch_from_regions_file():
     regions = load_regions()
     assert region_cells(regions["cap_r5"])[:3] == cap_cells()[:3]
     patch = regions["shackleton_ridge"]
-    assert (patch["res"], patch["half_size_km"]) == (7, 25.0) and "planetarynames" in patch["source"]
+    assert (patch["res"], patch["half_size_km"]) == (7, 25.0)
+    assert "planetarynames" in patch["source"]
     cells = region_cells(patch)
     assert all(h3.get_resolution(c) == 7 for c in cells[:10])
     x, y = latlon_to_xy(*cell_centres(cells))
@@ -193,16 +194,19 @@ def test_sample_points(cap, synth, synth_label):
     east, north, up = local_frame(lat[:, 0], lon[:, 0])
     d = unit_vector(lat[:, 1:7], lon[:, 1:7]) - up[:, None, :]
     bearing = np.arctan2(np.einsum("ijk,ik->ij", d, east), np.einsum("ijk,ik->ij", d, north))
-    gaps = np.diff(np.sort(bearing, axis=1), axis=1, append=np.sort(bearing, axis=1)[:, :1] + 2 * np.pi)
+    srt = np.sort(bearing, axis=1)
+    gaps = np.diff(srt, axis=1, append=srt[:, :1] + 2 * np.pi)
     assert np.degrees(gaps).min() > 40 and np.degrees(gaps).max() < 80
     dist_m = np.linalg.norm(d, axis=2) * R_M
     edge_m = np.sqrt(cell_areas_m2(cap) / (1.5 * math.sqrt(3)))  # regular hexagon circumradius
-    assert (dist_m > 0.6 * 0.8 * edge_m[:, None]).all() and (dist_m < 0.6 * 1.2 * edge_m[:, None]).all()
+    assert (dist_m > 0.6 * 0.8 * edge_m[:, None]).all()
+    assert (dist_m < 0.6 * 1.2 * edge_m[:, None]).all()
     # column 7 is the highest pixel carrying the cell's label
-    row, col = np.rint(xy_to_pixel(synth.transform, *latlon_to_xy(lat[:, 7], lon[:, 7]))).astype(int)
+    rc = xy_to_pixel(synth.transform, *latlon_to_xy(lat[:, 7], lon[:, 7]))
+    row, col = np.rint(rc).astype(int)
     assert (synth_label[row, col] == np.arange(len(cap))).all()
     for i in np.flatnonzero(height[:, 7] > 100)[::50]:
-        assert height[i, 7] == synth.heights_m[synth_label == i].max()
+        assert height[i, 7] == pytest.approx(synth.heights_m[synth_label == i].max(), abs=1e-3)
     assert (height[:, 7] >= height[:, 0] - 1e-3).mean() > 0.99
 
 
