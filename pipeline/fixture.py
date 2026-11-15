@@ -14,6 +14,8 @@ import h3
 import numpy as np
 from PIL import Image
 
+from pipeline.hyperion.grid import cap_cells  # the one enumeration helper (D-02)
+
 R_KM = 1737.4
 LAT_MAX_DEG = -80.0
 RES = 5
@@ -46,13 +48,6 @@ def _waves(rng: np.random.Generator, wavelength_km: float, n: int = 12):
         return np.sin(arg + phase).mean(axis=-1) * 2.5
 
     return field
-
-
-def cap_cells(res: int = RES, lat_max_deg: float = LAT_MAX_DEG, k: int = 80) -> list[str]:
-    """Cells with centre latitude <= lat_max_deg (D-02), most poleward first."""
-    disk = h3.grid_disk(h3.latlng_to_cell(-90.0, 0.0, res), k)
-    cells = [c for c in disk if h3.cell_to_latlng(c)[0] <= lat_max_deg]
-    return sorted(cells, key=lambda c: (h3.cell_to_latlng(c)[0], c))
 
 
 def write_fixture(data_dir: Path | str = "web/public/data") -> Path:

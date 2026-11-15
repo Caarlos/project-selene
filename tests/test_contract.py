@@ -52,7 +52,7 @@ def test_committed_fixture_is_valid_reproducible_and_small(generated):
             f"{name} is stale: run `python -m pipeline.fixture`"
         )
     total = sum(f.stat().st_size for f in COMMITTED.rglob("*") if f.is_file())
-    assert total < 5_000_000
+    assert total < 7_000_000  # fixture (4.7 MB) + shared 10-year ephemeris (1.75 MB)
 
 
 def test_fixture_values_vary_and_stay_consistent(generated):
