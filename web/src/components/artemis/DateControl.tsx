@@ -73,7 +73,8 @@ export default function DateControl({scenario}: {scenario: Scenario}) {
   const clear = useStore((s) => s.clearCustomRange);
   const check = validateRange(t0, step_s, n, start, end);
   const computing = status.phase === 'computing';
-  const nHorizon = scenario.grid.horizons_n_cells ?? scenario.grid.n_cells;
+  const nRows = scenario.cells.h3.length; // overview plus loaded patches
+  const nHorizon = scenario.grids.reduce((n, g) => n + (g.grid.horizons_n_cells ?? g.grid.n_cells), 0);
 
   /** Preset: fill the inputs and apply in one click (an invalid range only fills them and shows the error). */
   const run = (s: string, e: string) => {
@@ -196,7 +197,7 @@ export default function DateControl({scenario}: {scenario: Scenario}) {
           </p>
           {missing > 0 && (
             <p data-testid="date-missing">
-              {missing} of {scenario.grid.n_cells} cells have no horizon profile in this scenario ({nHorizon} have one) and
+              {missing} of {nRows} cells have no horizon profile in this scenario ({nHorizon} have one) and
               show no value for the custom range.
             </p>
           )}

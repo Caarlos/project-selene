@@ -1,7 +1,7 @@
 // "Colour by" dropdown and the legend of the map colours.
 import {EXCLUDED_RGBA, ICE_LINK_RGBA, NULL_RGBA, PINNED_RGBA, RAMP_CSS, SELECTED_RGBA, type Rgba} from '../../services/colour';
 import {COLOUR_METRICS, formatMetric, METRIC_INFO, type ColourField} from '../../services/metrics';
-import {useStore} from '../../services/store';
+import {kpisFor, useStore} from '../../services/store';
 
 const css = ([r, g, b, a]: Rgba) => `rgba(${r}, ${g}, ${b}, ${(a / 255).toFixed(2)})`;
 
@@ -11,7 +11,10 @@ export default function ColourLegend() {
   const setColourBy = useStore((s) => s.setColourBy);
   const selected = useStore((s) => s.selected);
   const pinnedCount = useStore((s) => s.pinned.length);
-  const hasIceLink = useStore((s) => s.selected !== null && (s.kpis?.nearestIce[s.selected] ?? -1) >= 0 && s.kpis?.nearestIce[s.selected] !== s.selected);
+  const hasIceLink = useStore((s) => {
+    const ice = s.selected === null ? -1 : (kpisFor(s, s.selected)?.nearestIce[s.selected] ?? -1);
+    return ice >= 0 && ice !== s.selected;
+  });
   const unit = colourBy === 'score' ? '0–1' : METRIC_INFO[colourBy].unit;
 
   return (

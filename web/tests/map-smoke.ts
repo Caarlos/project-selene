@@ -5,7 +5,7 @@
 import assert from 'node:assert/strict';
 import {execFileSync, spawn} from 'node:child_process';
 import {mkdirSync} from 'node:fs';
-import {cellToLatLng, latLngToCell} from 'h3-js';
+import {cellToLatLng, getResolution, latLngToCell} from 'h3-js';
 import {chromium, type Page} from 'playwright';
 import {projectStereo_m} from '../src/services/projection.ts';
 
@@ -265,7 +265,7 @@ try {
     page.evaluate(() => {
       const s: Float32Array = window.__selene.store.getState().mcdaScore;
       let h = 0;
-      for (let i = 0; i < s.length; i++) h = (h * 31 + Math.round(s[i] * 1e6)) | 0;
+      for (let i = 0; i < s.length; i++) if (s[i] === s[i]) h = (h * 31 + Math.round(s[i] * 1e6)) | 0; // NaN: hidden rows
       return h;
     });
   const applyRange = async (start: string, end: string) => {
@@ -366,6 +366,81 @@ try {
   assert.equal(await page.locator('[data-testid=legend-selected]').count(), 1);
   await page.waitForTimeout(800);
   await page.screenshot({path: `${WEB}test-results/real-selected.png`});
+
+  // 7c-2. detail patch (W6): zoom into the Shackleton patch, the resolution-7 cells replace the overview there
+  assert.match((await page.textContent('[data-testid=grid-note]'))!, /^Overview, resolution 5, 14,444 cells/);
+  assert.equal(await page.textContent('[data-testid=detail-fly]'), 'Zoom to detail');
+  await page.click('[data-testid=detail-fly]');
+  await page.waitForFunction(() => window.__selene.store.getState().detail === 'shackleton_ridge', null, {timeout: 60_000});
+  await ready(page);
+  assert.equal(await page.textContent('[data-testid=grid-note]'), 'Detail: Shackleton ridge, resolution 7, 6,024 cells');
+  const drawn = await page.evaluate(() => {
+    const layer = window.__selene.deck().layerManager.getLayers().find((l: {id: string}) => l.id === 'cells');
+    const {scenario} = window.__selene.store.getState();
+    const n0 = scenario.grid.n_cells;
+    const rows: number[] = layer.props.data;
+    return {total: rows.length, patchRows: rows.filter((r) => r >= n0).length, covered: scenario.grids[1].covered.length, n0};
+  });
+  assert.equal(drawn.patchRows, 6024);
+  assert.equal(drawn.total, drawn.n0 - drawn.covered + 6024, 'overview cells under the patch are still drawn');
+  // click the patch cell nearest the view centre
+  const target = await page.evaluate(() => {
+    const deck = window.__selene.deck();
+    const vp = deck.getViewports()[0];
+    const c = vp.unproject([vp.width / 2, vp.height / 2]) as number[];
+    const {cells, grids} = window.__selene.store.getState().scenario;
+    return {c, lat: cells.lat.slice(grids[1].rowStart), lon: cells.lon.slice(grids[1].rowStart), h3: cells.h3.slice(grids[1].rowStart)};
+  });
+  let k = 0;
+  let kd = Infinity;
+  target.lat.forEach((lat: number, i: number) => {
+    const [x, y] = projectStereo_m(lat, target.lon[i]);
+    const d = Math.hypot(x - target.c[0], y - target.c[1]);
+    if (d < kd) [k, kd] = [i, d];
+  });
+  const [px, py] = await page.evaluate((xy) => window.__selene.deck().getViewports()[0].project(xy) as [number, number], projectStereo_m(target.lat[k], target.lon[k]));
+  await page.mouse.move(rbox.x + px + 1, rbox.y + py + 1);
+  await page.mouse.move(rbox.x + px, rbox.y + py);
+  await page.mouse.click(rbox.x + px, rbox.y + py);
+  await page.waitForFunction(() => {
+    const {selected, scenario} = window.__selene.store.getState();
+    return selected !== null && selected >= scenario.grid.n_cells;
+  }, null, {timeout: 30_000});
+  const patchId = (await page.textContent('[data-testid=selected-cell-id]'))!;
+  assert.equal(getResolution(patchId), 7, `selected ${patchId} is not a resolution-7 cell`);
+  assert.equal(patchId, target.h3[k]);
+  await page.waitForSelector('[data-testid=horizon-chart] canvas', {timeout: 30_000});
+  assert((await page.textContent('[data-testid=sun-summary]'))!.length > 20, 'sun summary is empty for the patch cell');
+  await page.waitForTimeout(800);
+  await page.screenshot({path: `${WEB}test-results/real-patch.png`});
+  // slider recolour budget with the patch shown
+  const patchTimings = await page.evaluate(async () => {
+    const {store, deck} = window.__selene;
+    const out: number[] = [];
+    for (let i = 0; i < 6; i++) {
+      const t0 = performance.now();
+      store.getState().setWeight(['sun', 'comms', 'terrain', 'ice'][i % 4], 10 + 13 * i);
+      const version = store.getState().colourVersion;
+      const committed = () => deck().props.layers.find((l: {id: string}) => l.id === 'cells').props.updateTriggers.getFillColor === version;
+      for (let j = 0; !committed(); j++) {
+        if (j > 200) throw new Error('React did not hand the new colours to deck.gl');
+        await new Promise<void>((r) => queueMicrotask(r));
+      }
+      deck().layerManager.updateLayers();
+      out.push(performance.now() - t0);
+      await new Promise((r) => setTimeout(r, 700));
+    }
+    store.getState().resetMcda();
+    return out;
+  });
+  report.patchSliderTickMs = patchTimings.map((t) => +t.toFixed(1));
+  for (const t of patchTimings) assert(t < RECOLOUR_BUDGET_MS, `slider tick with the patch shown: ${t} ms`);
+  // back to the overview with the button
+  assert.equal(await page.textContent('[data-testid=detail-fly]'), 'Back to overview');
+  await page.click('[data-testid=detail-fly]');
+  await page.waitForFunction(() => window.__selene.store.getState().detail === null, null, {timeout: 60_000});
+  assert.match((await page.textContent('[data-testid=grid-note]'))!, /^Overview, resolution 5, 14,444 cells/);
+  report.patch = {clicked: patchId, drawn};
   // reference value and basis change the scores
   await page.evaluate(() => window.__selene.store.getState().setColourBy('score'));
   const real0 = await checksum();

@@ -4,7 +4,7 @@ import {KPI_IDS, kpiDescription} from '../../services/kpiConfig';
 import type {Scenario} from '../../services/loader';
 import {METRIC_INFO} from '../../services/metrics';
 import {effectiveSettings} from '../../services/mcda';
-import {MAX_PINNED, useStore} from '../../services/store';
+import {kpisFor, MAX_PINNED, scoreFor, useStore} from '../../services/store';
 import DocLink from './DocLink';
 import {METRIC_GROUPS} from './metricGroups';
 import {useCellSky, type CellSky} from './useCellSky';
@@ -80,8 +80,9 @@ function SunSummary({sky}: {sky: CellSky}) {
     <p className="mt-2 rounded bg-slate-800 p-2 text-xs text-slate-300" data-testid="sun-summary">
       Highest Sun sampled over the active dates: about <strong data-testid="sun-max-elevation">{max.toFixed(1)}°</strong>
       {max < 0 ? ' (below the horizontal: the Sun does not rise above flat ground). ' : ' elevation. '}
-      Sunlight arrives almost horizontally, so solar panels must be vertical or mast-mounted and
-      rotate through 360°.
+      {sky.metrics.sun_pct === 0
+        ? 'The terrain hides the Sun at this cell for the whole date range.'
+        : 'Sunlight arrives almost horizontally, so solar panels must be vertical or mast-mounted and rotate through 360°.'}
     </p>
   );
 }
@@ -120,15 +121,16 @@ export default function Inspector({scenario}: {scenario: Scenario}) {
   const selected = useStore((s) => s.selected);
   const pinned = useStore((s) => s.pinned);
   const togglePin = useStore((s) => s.togglePin);
-  const kpis = useStore((s) => s.kpis);
+  const kpis = useStore((s) => (selected === null ? s.kpis : kpisFor(s, selected)));
   const custom = useStore((s) => s.customRange) !== null;
   const settings = effectiveSettings(useStore((s) => s.kpiSettings), custom);
   useStore((s) => s.colourVersion); // score buffers change in place
   const {manifest} = scenario;
-  const cells = useStore((s) => s.cells) ?? scenario.cells; // custom-range columns when a range is active
+  const cells = useStore((s) => s.fullCells) ?? scenario.cells; // custom-range columns when a range is active, hidden cells included
 
   if (selected === null) return <p className="text-slate-400">Click a cell on the map to inspect it.</p>;
-  const {mcdaScore, excluded} = useStore.getState();
+  const {excluded} = useStore.getState();
+  const score = scoreFor(useStore.getState(), selected);
   return (
     <div className="space-y-4">
       {manifest.synthetic && (
@@ -159,7 +161,7 @@ export default function Inspector({scenario}: {scenario: Scenario}) {
             <DocLink id="score" />
           </dt>
           <dd className="text-right font-semibold" data-testid="cell-score-value">
-            {show(mcdaScore[selected], '0–1')}
+            {show(score, '0–1')}
             {excluded[selected] ? ' (excluded by a filter)' : ''}
           </dd>
         </dl>

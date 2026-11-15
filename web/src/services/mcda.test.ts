@@ -260,7 +260,7 @@ describe('editable reference values and basis (W8)', () => {
   });
 
   it('the store recomputes KPIs when a setting changes', () => {
-    useStore.setState({scenario: {grid: {n_cells: 2}} as never, cells, kpis: null, customRange: null});
+    useStore.setState({scenario: {grid: {n_cells: 2}, cells, grids: []} as never, cells, kpis: null, customRange: null});
     useStore.setState({mcdaScore: new Float32Array(2), excluded: new Uint8Array(2), score: new Float32Array(2)});
     useStore.getState().setKpiSettings({iceDistanceScale_km: 20});
     expect(useStore.getState().kpis!.values.ice[1]).toBeCloseTo(1 - d_km / 20, 5);
@@ -274,7 +274,7 @@ describe('editable reference values and basis (W8)', () => {
   });
 
   it('settings changed during a custom range apply after clearCustomRange', () => {
-    useStore.setState({scenario: {grid: {n_cells: 2}, cells} as never, cells, kpis: null, baselineKpis: null, customRange: {startIndex: 0, endIndex: 1}});
+    useStore.setState({scenario: {grid: {n_cells: 2}, cells, grids: []} as never, cells, kpis: null, customRange: {startIndex: 0, endIndex: 1}});
     useStore.setState({mcdaScore: new Float32Array(2), excluded: new Uint8Array(2), score: new Float32Array(2)});
     useStore.getState().setKpiSettings({iceDistanceScale_km: 20, sunCommsBasis: 'mean'});
     useStore.getState().clearCustomRange();

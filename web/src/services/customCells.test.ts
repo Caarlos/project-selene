@@ -57,10 +57,9 @@ describe('custom-range override read path', () => {
     const kpis = computeKpis(base);
     const eff = withRangeValues(base, values);
     useStore.setState({
-      scenario: {cells: base} as never,
+      scenario: {cells: base, grids: []} as never,
       cells: eff,
       kpis: computeKpis(eff),
-      baselineKpis: kpis,
       customRange: {startIndex: 0, endIndex: 24},
       customMissing: 1,
       mcdaScore: new Float32Array(3),
@@ -71,7 +70,7 @@ describe('custom-range override read path', () => {
     const s = useStore.getState();
     expect(s.customRange).toBeNull();
     expect(s.cells).toBe(base);
-    expect(s.kpis).toBe(kpis);
+    expect(s.kpis).toEqual(kpis);
     expect(s.customMissing).toBe(0);
   });
 });

@@ -2,17 +2,18 @@
 import {KPI_CONFIG} from '../../services/kpiConfig';
 import type {Scenario} from '../../services/loader';
 import {formatMetric, METRIC_INFO} from '../../services/metrics';
-import {MAX_PINNED, useStore} from '../../services/store';
+import {kpisFor, MAX_PINNED, scoreFor, useStore} from '../../services/store';
 import {bestColumns, COMPARE_ROWS, type CompareRow} from './comparator';
 
 export default function Compare({scenario}: {scenario: Scenario}) {
   const pinned = useStore((s) => s.pinned);
   const togglePin = useStore((s) => s.togglePin);
   const select = useStore((s) => s.select);
-  const kpis = useStore((s) => s.kpis);
+  useStore((s) => s.kpis); // re-render when the KPIs change
+  useStore((s) => s.shadow);
   useStore((s) => s.colourVersion); // score buffers change in place
-  const cells = useStore((s) => s.cells) ?? scenario.cells; // custom-range columns when a range is active
-  const {mcdaScore} = useStore.getState();
+  const cells = useStore((s) => s.fullCells) ?? scenario.cells; // custom-range columns when a range is active, hidden cells included
+  const state = useStore.getState();
 
   if (pinned.length === 0) {
     return (
@@ -23,10 +24,12 @@ export default function Compare({scenario}: {scenario: Scenario}) {
   }
   const value = (row: CompareRow, i: number): {v: number | null; text: string} => {
     if (row.kind === 'score') {
-      const v = Number.isNaN(mcdaScore[i]) ? null : mcdaScore[i];
+      const sc = scoreFor(state, i);
+      const v = Number.isNaN(sc) ? null : sc;
       return {v, text: formatMetric(v, '0–1')};
     }
     if (row.kind === 'kpi') {
+      const kpis = kpisFor(state, i);
       const v = kpis && kpis.available[row.id] && !Number.isNaN(kpis.values[row.id][i]) ? kpis.values[row.id][i] : null;
       return {v, text: formatMetric(v, '0–1')};
     }

@@ -210,6 +210,8 @@ Written by the pipeline to `web/public/data/<scenario_id>/`. Schema version 1. J
 
 **`horizons_<grid>.bin`** — little-endian `Int16`, `n_cells × 360` values, row order as `cells`, column = azimuth 0°…359°, unit 0.01°. It is the horizon of the **best point** of each cell. Loaded lazily (inspector and custom dates).
 
+**Grid fields and file names.** Files of a grid are named `cells_<grid id>.json` and `horizons_<grid id>.bin`. A detail patch's `grids` entry additionally carries the optional `name` (its `pipeline/regions.json` key) and `bounds_m` = `[xmin, ymin, xmax, ymax]` in south polar stereographic projection metres; the overview grid has neither.
+
 **`ephemeris_2026_2036.bin`** (shared by all scenarios) — little-endian `Float32`, `n × 5` values per row: sub-solar lon, sub-solar lat, sub-Earth lon, sub-Earth lat (degrees), Earth–Moon distance (km).
 
 **`hillshade.webp`** — shaded relief, bounds in the manifest.

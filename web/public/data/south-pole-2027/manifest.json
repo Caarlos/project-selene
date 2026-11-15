@@ -84,11 +84,28 @@
       "n_cells": 14444,
       "cells": "cells_cap_r5.json",
       "horizons": "horizons_cap_r5.bin"
+    },
+    {
+      "id": "shackleton_ridge",
+      "res": 7,
+      "n_cells": 6024,
+      "cells": "cells_shackleton_ridge.json",
+      "horizons": "horizons_shackleton_ridge.bin",
+      "name": "shackleton_ridge",
+      "bounds_m": [
+        -17309.756238163132,
+        -31402.723035824136,
+        32690.243761836868,
+        18597.276964175864
+      ]
     }
   ],
   "notes": [
     "Slopes and TRI are measured on the 80 m LOLA DEM (ldem_80s_80m.jp2), not the 20 m product (not downloaded).",
     "For 424 best points the longest dark run and for 5009 the longest Earth outage touches the start or end of the scenario, so it may be longer than reported.",
-    "1 cells have a ray that left the DEM before 150 km (horizon_truncated)."
+    "1 cells have a ray that left the DEM before 150 km (horizon_truncated).",
+    "[shackleton_ridge] Slopes and TRI are measured on the 80 m LOLA DEM (ldem_80s_80m.jp2), not the 20 m product (not downloaded).",
+    "[shackleton_ridge] For 854 best points the longest dark run and for 2220 the longest Earth outage touches the start or end of the scenario, so it may be longer than reported.",
+    "[shackleton_ridge] 0 cells have a ray that left the DEM before 150 km (horizon_truncated)."
   ]
 }
