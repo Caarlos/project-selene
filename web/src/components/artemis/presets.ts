@@ -12,8 +12,8 @@ export interface MissionPreset {
 
 export const MISSION_PRESETS: readonly MissionPreset[] = [
   {
-    id: 'artemis3',
-    label: 'Artemis III (crewed sortie)',
+    id: 'artemis4',
+    label: 'Artemis IV (crewed sortie)',
     weights: {sun: 0.3, comms: 0.3, terrain: 0.3, ice: 0.05, protection: 0.05},
     filters: {slope_p95_deg: 10, earth_best_pct: 50},
   },

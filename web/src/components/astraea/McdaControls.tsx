@@ -101,11 +101,11 @@ export function McdaWeights() {
         const ok = kpis.available[k];
         return (
           <div key={k} className={ok ? '' : 'opacity-60'}>
-            <label className="flex justify-between" title={`${def.explanation} Unit: ${def.unit}.`}>
+            <label className="flex justify-between gap-2" title={`${def.explanation} Unit: ${def.unit}.`}>
               <span>
                 {def.label} <span className="text-xs text-slate-500">{def.module}</span>
               </span>
-              <span data-testid={`share-${k}`}>{ok ? `${(100 * share[k]).toFixed(0)} %` : 'n/a'}</span>
+              <span className="shrink-0 whitespace-nowrap" data-testid={`share-${k}`}>{ok ? `${(100 * share[k]).toFixed(0)} %` : 'n/a'}</span>
             </label>
             <input
               type="range"

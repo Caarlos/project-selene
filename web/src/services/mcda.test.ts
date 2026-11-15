@@ -196,8 +196,8 @@ describe('store: presets and recompute', () => {
   });
   it('matches the table literally', () => {
     const t = (id: string) => MISSION_PRESETS.find((p) => p.id === id)!;
-    expect(t('artemis3').weights).toEqual({sun: 0.3, comms: 0.3, terrain: 0.3, ice: 0.05, protection: 0.05});
-    expect(t('artemis3').filters).toEqual({slope_p95_deg: 10, earth_best_pct: 50});
+    expect(t('artemis4').weights).toEqual({sun: 0.3, comms: 0.3, terrain: 0.3, ice: 0.05, protection: 0.05});
+    expect(t('artemis4').filters).toEqual({slope_p95_deg: 10, earth_best_pct: 50});
     expect(t('clps').weights).toEqual({sun: 0.15, comms: 0.15, terrain: 0.2, ice: 0.5, protection: 0});
     expect(t('clps').filters).toEqual({slope_p95_deg: 15});
     expect(t('basecamp').weights).toEqual({sun: 0.3, comms: 0.15, terrain: 0.15, ice: 0.25, protection: 0.15});
@@ -207,7 +207,7 @@ describe('store: presets and recompute', () => {
     seed();
     const {score, excluded} = useStore.getState();
     const v0 = useStore.getState().colourVersion;
-    useStore.getState().applyPreset('artemis3'); // slope_p95 <= 10 excludes cell 1; earth >= 50 excludes cell 1
+    useStore.getState().applyPreset('artemis4'); // slope_p95 <= 10 excludes cell 1; earth >= 50 excludes cell 1
     expect(useStore.getState().score).toBe(score);
     expect(useStore.getState().excluded).toBe(excluded);
     expect(Array.from(excluded)).toEqual([0, 1]);

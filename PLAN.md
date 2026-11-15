@@ -259,7 +259,7 @@ A KPI whose inputs are null for a scenario is left out of both sums and its slid
 
   | Preset | sun | comms | terrain | ice | protection | Filters |
   |---|---|---|---|---|---|---|
-  | Artemis III (crewed sortie) | 0.30 | 0.30 | 0.30 | 0.05 | 0.05 | `slope_p95_deg ≤ 10`, `earth_best_pct ≥ 50` |
+  | Artemis IV (crewed sortie) | 0.30 | 0.30 | 0.30 | 0.05 | 0.05 | `slope_p95_deg ≤ 10`, `earth_best_pct ≥ 50` |
   | CLPS (ice prospecting rover) | 0.15 | 0.15 | 0.20 | 0.50 | 0.00 | `slope_p95_deg ≤ 15` |
   | Base Camp (permanent habitat) | 0.30 | 0.15 | 0.15 | 0.25 | 0.15 | `dark_max_h_best ≤ 150` |
 
@@ -351,7 +351,7 @@ project-selene/
 
 * Compare `sun_mean_pct` and `earth_mean_pct` with the published LOLA maps (`AVGVISIB_75S_120M_201608*.TIF`); report the mean difference and the correlation. Expect a small systematic offset: those maps average 18.6 years and count any visible part of the disc.
 * Check that well-known high-illumination sites (Shackleton rim, the connecting ridge, Malapert) rank near the top of `sun_best_pct` and that large PSRs (Shackleton floor, Cabeus, Haworth) come out dark.
-* Overlay NASA's Artemis III candidate regions and report how they score under the Artemis III preset.
+* Overlay NASA's Artemis candidate landing regions and report how they score under the Artemis IV preset.
 
 ---
 

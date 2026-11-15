@@ -6,10 +6,18 @@ import {HardFilters, McdaWeights, TopCells} from './components/astraea/McdaContr
 import {HeaderDates} from './components/artemis/DateControl';
 import PresetButtons from './components/artemis/PresetButtons';
 import {docHref} from './components/apollo/headings';
+import Landing from './components/apollo/Landing';
 import {useStore} from './services/store';
 
 const ApolloView = lazy(() => import('./components/apollo/ApolloView')); // Markdown + KaTeX stay out of the map bundle
-const isDocHash = () => location.hash.startsWith('#doc=');
+type View = 'home' | 'map' | 'docs';
+/** The view follows the hash: "#doc=…" documentation, "#map" the map, anything else the landing page. */
+const viewOf = (hash: string): View => (hash.startsWith('#doc=') ? 'docs' : hash === '#map' ? 'map' : 'home');
+const VIEWS: [View, string, string][] = [
+  ['home', 'Home', '#home'],
+  ['map', 'Map', '#map'],
+  ['docs', 'Documentation', docHref('primer')],
+];
 
 export default function App() {
   const status = useStore((s) => s.status);
@@ -22,16 +30,12 @@ export default function App() {
     void load(dataUrl, new URLSearchParams(location.search).get('scenario'));
   }, [load]);
 
-  const [view, setView] = useState<'map' | 'docs'>(isDocHash() ? 'docs' : 'map');
+  const [view, setView] = useState<View>(viewOf(location.hash));
   useEffect(() => {
-    const on = () => isDocHash() && setView('docs');
+    const on = () => setView(viewOf(location.hash));
     window.addEventListener('hashchange', on);
     return () => window.removeEventListener('hashchange', on);
   }, []);
-  const showMap = () => {
-    history.replaceState(null, '', location.pathname + location.search);
-    setView('map');
-  };
 
   const manifest = scenario?.manifest;
   return (
@@ -57,20 +61,20 @@ export default function App() {
           </>
         )}
         <nav className="ml-auto flex gap-1" aria-label="View">
-          {(['map', 'docs'] as const).map((v) => (
+          {VIEWS.map(([v, label, href]) => (
             <a
               key={v}
               data-testid={`view-${v}`}
-              href={v === 'docs' ? docHref('primer') : '#'}
+              href={href}
               aria-current={view === v ? 'page' : undefined}
               className={`rounded px-3 py-0.5 ${view === v ? 'bg-slate-700 font-semibold' : 'hover:bg-slate-800'}`}
-              onClick={v === 'map' ? (e) => (e.preventDefault(), showMap()) : undefined}
             >
-              {v === 'map' ? 'Map' : 'Documentation'}
+              {label}
             </a>
           ))}
         </nav>
       </header>
+      {view === 'home' && <Landing />}
       {view === 'docs' && (
         <Suspense fallback={<p className="m-4">Loading documentation…</p>}>
           <ApolloView />
@@ -81,9 +85,9 @@ export default function App() {
           Could not load scenario data: {error}
         </p>
       )}
-      {status === 'loading' && <p className="m-4">Loading scenario…</p>}
+      {status === 'loading' && view === 'map' && <p className="m-4">Loading scenario…</p>}
       {status === 'ready' && scenario && (
-        <div className={view === 'docs' ? 'hidden' : 'flex min-h-0 flex-1'}>
+        <div className={view === 'map' ? 'flex min-h-0 flex-1' : 'hidden'}>
           <aside className="w-64 shrink-0 space-y-3 overflow-y-auto border-r border-slate-800 p-3">
             <PresetButtons />
             <McdaWeights />

@@ -103,7 +103,7 @@ Each module is designated by an aerospace-style backronym paired with a Greco-Ro
 ### ARTEMIS
 * **Backronym:** Adaptive Reconnaissance & Targeted Exploration Mission Integration System
 * **The Myth:** Artemis is the goddess of the hunt, wild landscapes, and purposeful exploration. The namesake of NASA's return-to-the-Moon initiative, she embodies active, targeted operations across challenging frontiers.
-* **What It Does in Plain Words:** ARTEMIS is the mission operations layer. It translates physical indicators into actionable mission planning. It provides one-click mission presets inspired by three mission types (Artemis III crewed sortie, CLPS robotic ice prospector, and sustainable Base Camp). The preset weights are this project's own assumptions, not NASA requirements. For any selected location, ARTEMIS calculates the geodesic distance and steepest intervening slope to the nearest accessible water-ice deposit. It provides indicative battery storage sizing based on worst-case continuous darkness hours, manages custom launch date selection via browser-side background recalculations, and features an A/B comparator that lets planners pin up to three candidate sites side-by-side to review trade-offs directly.
+* **What It Does in Plain Words:** ARTEMIS is the mission operations layer. It translates physical indicators into actionable mission planning. It provides one-click mission presets inspired by three mission types (Artemis IV crewed sortie, CLPS robotic ice prospector, and sustainable Base Camp). The preset weights are this project's own assumptions, not NASA requirements. For any selected location, ARTEMIS calculates the geodesic distance and steepest intervening slope to the nearest accessible water-ice deposit. It provides indicative battery storage sizing based on worst-case continuous darkness hours, manages custom launch date selection via browser-side background recalculations, and features an A/B comparator that lets planners pin up to three candidate sites side-by-side to review trade-offs directly.
 * **How the Myth Mirrors the Job:** Where ASTRAEA provides the scales to weigh data, ARTEMIS directs the hunt. It focuses raw geographic data toward specific operational mission objectives, charting the path from touchdown to resource extraction.
 
 ### APOLLO
@@ -147,7 +147,7 @@ At the lunar south pole, however, this option does not exist. The south polar re
 
 Because no single location maximizes all five criteria, the "best" site depends entirely on the nature of the mission:
 
-* **Short Crewed Sortie (Artemis III):** Astronauts spend a few days on the surface. The mission cannot compromise on landing safety or direct communications with mission control. Weights are heavily tilted toward safe terrain slopes, direct Earth links, and adequate sunlight, with low priority placed on long-term shielding or immediate water ice access.
+* **Short Crewed Sortie (Artemis IV):** Astronauts spend a few days on the surface. The mission cannot compromise on landing safety or direct communications with mission control. Weights are heavily tilted toward safe terrain slopes, direct Earth links, and adequate sunlight, with low priority placed on long-term shielding or immediate water ice access.
 * **Robotic Resource Prospector (CLPS Rover):** An uncrewed rover sent to sample volatiles can take greater landing risks and requires far less radiation shielding. Its paramount objective is ice stability. The analysis weights ice proximity and low temperatures highest, accepting steeper terrain and shorter communication windows.
 * **Permanent Base Camp:** A long-term habitat must sustain human life for years. It requires a balanced compromise: a well-lit peak with short darkness periods (minimizing battery storage mass), reasonable proximity to an ice-bearing crater via a traversable slope, consistent Earth visibility, and some natural topographic shielding.
 
@@ -160,14 +160,14 @@ By using Multi-Criteria Decision Analysis (MCDA), Project SELENE enables scienti
 These five guided activities demonstrate how to use SELENE to investigate the real engineering trade-offs of the lunar south pole. Each activity focuses on a specific question, guides you through the relevant application controls, and highlights the key physical patterns to notice.
 
 ### Activity 1: Hunting for sunlight on polar ridges
-* **Question to investigate:** Which south polar landforms capture the greatest share of annual sunlight, and how does the Artemis III preset balance illumination with terrain steepness?
+* **Question to investigate:** Which south polar landforms capture the greatest share of annual sunlight, and how does the Artemis IV preset balance illumination with terrain steepness?
 * **Steps:**
   1. Open the application and find the colour metric selector in the main control panel.
   2. Select `sun_best_pct` to colour the hexagonal cells by their best-point annual sunlight percentage, and observe where the brightest yellow cells cluster around 89°S to 90°S.
   3. Change the colour metric to `slope_p95_deg` to examine slope hazards across those same illuminated summits.
-  4. Click the "Artemis III" mission preset button, which assigns 30 percent weight each to sunlight, communications, and terrain safety, and applies a hard filter capping the 95th-percentile slope at 10 degrees.
+  4. Click the "Artemis IV" mission preset button, which assigns 30 percent weight each to sunlight, communications, and terrain safety, and applies a hard filter capping the 95th-percentile slope at 10 degrees.
 * **What to notice:**
-  The best-illuminated summits along the Shackleton crater rim and the connecting ridge reach over 80 percent annual sunlight, but several of those peaks have steep 95th-percentile slopes. When the Artemis III preset is active, cells with excessive slopes are greyed out by the hard filter, leaving safer adjacent plateaus highlighted for crewed landing.
+  The best-illuminated summits along the Shackleton crater rim and the connecting ridge reach over 80 percent annual sunlight, but several of those peaks have steep 95th-percentile slopes. When the Artemis IV preset is active, cells with excessive slopes are greyed out by the hard filter, leaving safer adjacent plateaus highlighted for crewed landing.
 
 ### Activity 2: The prospector's dilemma with weight sliders
 * **Question to investigate:** How do candidate landing locations change across the map when mission priorities shift from crew safety to water-ice prospecting?

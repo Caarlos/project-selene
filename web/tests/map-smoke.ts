@@ -66,7 +66,7 @@ try {
     });
 
   // 1. loads the fixture
-  await page.goto(`${URL_BASE}?scenario=fixture`);
+  await page.goto(`${URL_BASE}?scenario=fixture#map`);
   await ready(page);
   await page.waitForTimeout(1500);
   assert.equal(await page.textContent('[data-testid=scenario-id]'), 'fixture');
@@ -146,7 +146,7 @@ try {
   const s1 = await frame();
   assert.notEqual(s1.checksum, s0.checksum, 'slider did not change the colours');
   report.shareIceAfterSlider = await page.textContent('[data-testid=share-ice]');
-  await page.click('[data-testid=preset-artemis3]');
+  await page.click('[data-testid=preset-artemis4]');
   await page.waitForTimeout(800);
   const s2 = await frame();
   assert.notEqual(s2.checksum, s1.checksum, 'preset did not change the colours');
@@ -154,7 +154,7 @@ try {
   assert.equal(await page.locator('[data-testid=filter-on-slope_p95_deg]').isChecked(), true);
   assert.equal(await page.locator('[data-testid=filter-limit-slope_p95_deg]').inputValue(), '10');
   assert.equal(await page.locator('[data-testid=slider-sun]').inputValue(), '30');
-  report.artemis3 = {excluded: await page.textContent('[data-testid=excluded-count]'), shareSun: await page.textContent('[data-testid=share-sun]')};
+  report.artemis4 = {excluded: await page.textContent('[data-testid=excluded-count]'), shareSun: await page.textContent('[data-testid=share-sun]')};
   await page.waitForSelector('[data-testid=top-cells] li');
   const topId = await page.textContent('[data-testid=top-cells] li:first-child code');
   await page.click('[data-testid=top-cells] li:first-child button');
@@ -183,7 +183,7 @@ try {
       await new Promise((r) => setTimeout(r, 700));
     }
     const preset: number[] = [];
-    for (const id of ['clps', 'basecamp', 'artemis3']) {
+    for (const id of ['clps', 'basecamp', 'artemis4']) {
       preset.push(await run(() => store.getState().applyPreset(id)));
       await new Promise((r) => setTimeout(r, 700));
     }
@@ -341,7 +341,9 @@ try {
   };
 
   // 7c. main flow on the default real scenario (W7 documentation, W8 dates and reference values)
-  await page.goto(URL_BASE);
+  await page.goto(URL_BASE); // a first visit lands on the landing page; its button opens the map
+  assert.match((await page.textContent('[data-testid=landing]'))!, /Artemis IV .*Compare up to three cells/s);
+  await page.click('[data-testid=landing-open-map]');
   await ready(page);
   await page.waitForTimeout(1500);
   assert.equal(await page.textContent('[data-testid=scenario-id]'), 'south-pole-2027');
