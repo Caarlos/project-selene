@@ -18,16 +18,19 @@ concurrency:
 jobs:
   build:
     runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: web # corepack reads the pinned pnpm version from web/package.json
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
           node-version-file: .nvmrc
       - run: corepack enable
-      - run: pnpm --dir web install --frozen-lockfile
-      - run: pnpm --dir web typecheck
-      - run: pnpm --dir web test
-      - run: pnpm --dir web build
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm typecheck
+      - run: pnpm test
+      - run: pnpm build
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
         with:
