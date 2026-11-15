@@ -45,14 +45,17 @@ def test_generated_fixture_is_valid_and_synthetic(generated):
 def test_committed_fixture_is_valid_reproducible_and_small(generated):
     validate_scenario(COMMITTED / "fixture")
     index = json.loads((COMMITTED / "index.json").read_text())
-    assert index == [{"id": "fixture", "manifest": "fixture/manifest.json"}]
+    assert index[-1] == {"id": "fixture", "manifest": "fixture/manifest.json"}
+    assert index[0]["id"] == "south-pole-2027"  # the real baseline is listed first
     # text artefacts must match what fixture.py writes today (binary ones are size-checked above)
     for name in ("manifest.json", "cells_cap_r5.json"):
         assert (COMMITTED / "fixture" / name).read_bytes() == (generated / name).read_bytes(), (
             f"{name} is stale: run `python -m pipeline.fixture`"
         )
     total = sum(f.stat().st_size for f in COMMITTED.rglob("*") if f.is_file())
-    assert total < 7_000_000  # fixture (4.7 MB) + shared 10-year ephemeris (1.75 MB)
+    # fixture (4.7 MB) + shared 10-year ephemeris (1.75 MB) + the real south-pole-2027 scenario
+    # (10.4 MB horizons, a few MB cells, hillshade): keep the repository's web data small
+    assert total < 25_000_000
 
 
 def test_fixture_values_vary_and_stay_consistent(generated):

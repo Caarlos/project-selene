@@ -20,3 +20,6 @@ web/playwright/.cache/
 *.tsbuildinfo
 
 .claude/worktrees/
+
+# build cache (traced horizons)
+data/cache/
