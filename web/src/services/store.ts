@@ -76,6 +76,8 @@ export interface SeleneState {
   scoreHint: ScoreHint;
   /** Set by `focusCell`: the map centres on this projected point (metres); `seq` makes repeats distinct. */
   focus: {index: number; seq: number} | null;
+  /** Custom date range as ephemeris table row indices [startIndex, endIndex); null = the baseline scenario range. Set by W4. */
+  customRange: {startIndex: number; endIndex: number} | null;
   /** Incremented whenever `score` or `excluded` changed in place: the map recolours on it. */
   colourVersion: number;
 
@@ -117,6 +119,7 @@ export const useStore = create<SeleneState>()((set, get) => ({
   focus: null,
   range: null,
   colourVersion: 0,
+  customRange: null,
 
   async load(dataUrl, scenarioId) {
     set({status: 'loading', error: null});
@@ -128,6 +131,7 @@ export const useStore = create<SeleneState>()((set, get) => ({
         selected: null,
         pinned: [],
         focus: null,
+        customRange: null,
         kpis: computeKpis(scenario.cells),
         score: new Float32Array(n),
         mcdaScore: new Float32Array(n),

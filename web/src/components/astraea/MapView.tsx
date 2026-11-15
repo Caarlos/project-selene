@@ -4,6 +4,7 @@ import {COORDINATE_SYSTEM, OrthographicView, type Color, type PickingInfo} from 
 import {BitmapLayer, PathLayer, PolygonLayer, TextLayer} from '@deck.gl/layers';
 import DeckGL, {type DeckGLRef} from '@deck.gl/react';
 import {useEffect, useMemo, useRef, useState} from 'react';
+import {rangeMetrics} from '../../services/ephemeris';
 import {writeCellColour, type Rgba} from '../../services/colour';
 import type {Scenario} from '../../services/loader';
 import {formatMetric, METRIC_INFO} from '../../services/metrics';
@@ -73,6 +74,7 @@ export default function MapView({scenario}: {scenario: Scenario}) {
   const colourVersion = useStore((s) => s.colourVersion);
   const select = useStore((s) => s.select);
   const focus = useStore((s) => s.focus);
+  const nearestIce = useStore((s) => s.kpis?.nearestIce);
   const deckRef = useRef<DeckGLRef>(null);
   const [fitZoom, setFitZoom] = useState<number | null>(null);
   const [zoom, setZoom] = useState<number | null>(null);
@@ -92,11 +94,16 @@ export default function MapView({scenario}: {scenario: Scenario}) {
 
   // Debug handle for the headless smoke test (web/tests/map-smoke.ts).
   useEffect(() => {
-    Object.assign(window, {__selene: {store: useStore, deck: () => deckRef.current?.deck}});
+    Object.assign(window, {__selene: {store: useStore, rangeMetrics, deck: () => deckRef.current?.deck}});
   }, []);
 
   const {score, excluded} = useStore.getState();
   const rings = selected === null || pinned.includes(selected) ? pinned : [...pinned, selected];
+  const ice = selected !== null && nearestIce ? nearestIce[selected] : -1;
+  const iceLink =
+    ice >= 0 && ice !== selected
+      ? [[...projectStereo_m(scenario.cells.lat[selected!], scenario.cells.lon[selected!]), ...projectStereo_m(scenario.cells.lat[ice], scenario.cells.lon[ice])]]
+      : [];
   const layers = [
     new BitmapLayer({id: 'hillshade', image: scenario.hillshadeUrl, bounds, coordinateSystem: CARTESIAN}),
     new PolygonLayer<number[]>({
@@ -144,6 +151,16 @@ export default function MapView({scenario}: {scenario: Scenario}) {
       lineWidthUnits: 'pixels',
       getLineWidth: 3,
       updateTriggers: {getLineColor: selected},
+    }),
+    new PathLayer<number[]>({
+      id: 'ice-link',
+      data: iceLink,
+      getPath: (d) => d,
+      positionFormat: 'XY',
+      coordinateSystem: CARTESIAN,
+      getColor: [56, 189, 248, 255],
+      widthUnits: 'pixels',
+      getWidth: 3,
     }),
   ];
 
