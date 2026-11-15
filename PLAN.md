@@ -355,7 +355,7 @@ project-selene/
 
 ## 12. Roadmap and task list
 
-Priorities: **P0** must be done for the demonstrator; **P1** should; **P2** could. ★ marks the demanding tasks (physics kernels and the pieces everything else builds on). All developer agents run on Sonnet; Fable only orchestrates and verifies. Gemini 3.8 Flash through the `agy` CLI is used for documentation drafts, second-opinion reviews and simple boilerplate (see the orchestrator agent for the exact rules). At most two workers run in parallel (2-core VPS); the pipeline track and the web track are independent after T0.
+Priorities: **P0** must be done for the demonstrator; **P1** should; **P2** could. ★ marks the demanding tasks (physics kernels and the pieces everything else builds on). All developer agents run on Sonnet; Fable only orchestrates; verification runs on Opus. Gemini 3.8 Flash through the `agy` CLI is used for documentation drafts, second-opinion reviews and simple boilerplate (see the orchestrator agent for the exact rules). At most two workers run in parallel (2-core VPS); the pipeline track and the web track are independent after T0.
 
 | ID | Pri | Task | Depends on | Owns |
 |---|---|---|---|---|
